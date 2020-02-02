@@ -112,7 +112,9 @@ ena_to_muxsel (
 // System Bux Mux
 sysmux#(1, SLAVE_QTY)
 sm (
-    .master_ins(cpu_bus),
+    .master_ins({
+    	cpu_bus
+    }),
     .master_out(slave_shared_master_bus),
     
     .slave_ins({
@@ -121,11 +123,12 @@ sm (
     }),
     .slave_out(master_shared_slave_bus),
     
+    .msel(1'b0),
     .ssel(bus_sel)
 );
 
 // ROM Core
-rom#("U:/ENSC452/Z80Code/program.bin", 15)
+rom#("bin/program.bin", 15)
 myrom (
     .clk(masterclk),
     .ena(rom_ena),
@@ -137,7 +140,8 @@ myrom (
 oport op (
     .clk(masterclk),
     .ena(oport_ena),
-    .ibus(slave_shared_master_bus)
+    .ibus(slave_shared_master_bus),
+    .obus(oport_bus)
 );
 
 endmodule : z80test

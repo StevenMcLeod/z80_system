@@ -1,5 +1,7 @@
 `include "Z80Bus.vh"
 
+`define CLAMP_LOW(v, cl) ((v) > (cl) ? (v) : (cl))
+
 module sysmux #(
     parameter MASTER_QTY,
     parameter SLAVE_QTY
@@ -10,7 +12,7 @@ module sysmux #(
 //    input logic[7:0]                        dmaster_ins,
 //    input logic[15:0]                       addr_ins,
 //    input logic                             inta_ins,
-    input Z80MasterBus                      master_ins,
+    input Z80MasterBus                      master_ins[MASTER_QTY],
     
 //    output logic[7:0]                       dmaster_out,
 //    output logic                            addr_out,
@@ -25,26 +27,29 @@ module sysmux #(
 //    output logic                            mwait_out,
     output Z80SlaveBus                      slave_out,
 
-    //input logic[$clog2(MASTER_QTY)-1 : 0]   msel,
-    input logic[$clog2(SLAVE_QTY)-1 : 0]    ssel
+    // If MASTER_QTY or SLAVE_QTY == 1 then vector width is 0 and tie low
+    input logic[`CLAMP_LOW($clog2(MASTER_QTY)-1, 0) : 0]   msel,
+    input logic[`CLAMP_LOW($clog2(SLAVE_QTY)-1, 0)  : 0]   ssel
 );
 
 always_comb
 begin
-    //if(msel < MASTER_QTY) begin
-        master_out.dmaster <= master_ins.dmaster;
-        master_out.addr    <= master_ins.addr;
-        master_out.inta    <= master_ins.inta;
-    //end else begin
-        //master_out.dmaster <= '0;
-        //master_out.addr <= '0;
-        //master_out.inta <= 1'b0;
-    //end
+    if(MASTER_QTY == 1 
+        || msel < MASTER_QTY) begin
+        master_out.dmaster <= master_ins[msel].dmaster;
+        master_out.addr    <= master_ins[msel].addr;
+        master_out.inta    <= master_ins[msel].inta;
+    end else begin
+        master_out.dmaster <= '0;
+        master_out.addr <= '0;
+        master_out.inta <= 1'b0;
+    end
 end
 
 always_comb
 begin
-    if(ssel < SLAVE_QTY) begin
+    if(SLAVE_QTY == 1 
+        || ssel < SLAVE_QTY) begin
         slave_out.dslave    <= slave_ins[ssel].dslave;
         slave_out.mwait     <= slave_ins[ssel].mwait;
     end else begin
