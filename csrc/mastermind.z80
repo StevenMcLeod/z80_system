@@ -23,6 +23,37 @@ nmi_handle:
 ORG 0100h
 start:
     XOR     A, A
+    HALT
+
+; In:  HL - Ptr
+;      BC - Count
+;      A  - Byte
+;
+; Out: HL - Ptr + Count - 1
+;      DE - Ptr + Count
+;      BC - 0
+;
+; Mod: HL, DE, BC
+memset:
+    LD      (HL), A
+    DEC     BC
+    LD      A, C
+    OR      A, B
+    RET     Z
+
+    LD      E, L
+    LD      D, H
+    INC     DE
+    LDIR
+    RET
+
+; HL - String
+puts:
+    RET
+
+; HL - Dest
+gets:
+    RET
 
 init_board:
     LD      HL, correct
@@ -47,30 +78,210 @@ test_guess:
     LD      BC, BSIZE
     CALL    memset
 
+    ; for(b = BSIZE; b != 0; --b)
     LD      HL, correct
     LD      DE, current
     LD      B, BSIZE
 .ok_loop:
+    ; Test current == correct
     LD      A, (DE)
     CP      A, (HL)
     JR      NZ, .ok_cont
     
+    ; result[B] = 0x80 | G_OK (Take lower 4 bits of HL)
+    PUSH    HL
     LD      A, L
     AND     A, 0Fh
-    PUSH    HL
+
     LD      HL, result
     ADD     A, L
     LD      L, A
-    LD      (HL), G_OK
+
+    LD      (HL), (80h | G_OK)
     POP     HL
 
 .ok_cont:
+    INC     DE
+    INC     HL
     DJNZ    ok_loop
 
-.move_loop:
-    
-    
+    ; for(b = BSIZE; b != 0; --b)
+    LD      HL, result
+    PUSH    HL
+    LD      DE, current
+    LD      B, BSIZE
+.move_outer_loop:   ; Down Counter B
+    ; Test result == NONE
+    POP     HL
+    LD      A, (HL)
+    AND     A, 03h
+    PUSH    HL
+    JR      NZ, .move_outer_cont    ; if(...) continue;
 
+    ; Set to G_MOVE
+    INC     (HL)
+
+    ; for(C = 0; C < BSIZE; ++C)
+    LD      HL, correct
+    LD      C, 0
+.move_inner_loop:   ; Up Counter C
+    ; Check equal codes
+    LD      A, (DE)
+    LD      A, (HL)
+    JR      NZ, move_inner_cont
+
+    ; Check not used flag
+    PUSH    HL
+    
+    LD      HL, result
+    LD      A, C
+    ADD     A, L
+    LD      L, A
+
+    LD      A, (HL)
+    RLCA
+    POP     HL
+    JR      C, move_inner_cont
+    
+    ; Set flag to result
+    RRCA
+    OR      A, 80h
+    LD      (HL), A
+    JR      .move_outer_cont
+
+.move_inner_cont:
+    INC     HL
+    INC     C
+    LD      A, C
+    CP      BSIZE
+    JR      NZ, .move_inner_loop
+
+    l Set to G_WRONG
+    POP     HL
+    INC     (HL)
+    INC     HL
+    PUSH    HL
+
+.move_outer_cont:
+    INC     DE
+    INC     HL
+    DJNZ    .move_outer_loop
+
+    RET
+
+; A = Z on success
+; A = NZ on failure
+get_guess:
+    LD      HL, inbuf
+    LD      BC, 100h
+    CALL    gets
+
+    ; Test string size
+    XOR     A, A
+    OR      A, B
+    RET     NZ
+
+    LD      A, C
+    CP      A, BSIZE
+    LD      A, 1
+    RET     NZ
+
+    LD      HL, inbuf
+    LD      DE, current
+    LD      B, BSIZE
+.loop:
+    LD      A, (HL)
+
+    ; TODO: Check if right
+    ; if(isupper(*HL))
+    ; A < 'A'
+    CP      A, 'A'
+    JR      C, .l_lower
+    ; A > 'Z'
+    CP      A, ('Z'+1)
+    JR      NC, .l_lower
+
+    SUB     A, 'A'
+    LD      (DE), A
+    JR      .cont
+
+.l_lower:
+    ;if(islower(*HL))
+    ; A < 'a'
+    CP      A, 'a'
+    JR      C, .err
+    ; A > 'z'
+    CP      A, ('z'+1)
+    JR      NC, .err
+
+    SUB     A, 'a'
+    LD      (DE), A
+
+.cont:
+    ; if(A >= NCODE)
+    CP      A, NCODE
+    JP      NC, .err
+
+    INC     HL
+    INC     DE
+    DJNZ    .loop
+
+    XOR     A, A
+    RET
+
+.err:
+    LD      A, 1
+    RET
+
+; HL - Code
+print_code:
+    LD      B, BSIZE
+.loop:
+    LD      A, (HL)
+    CALL    putchar
+    DJNZ    .loop
+    RET
+
+print_result:
+    LD      B, BSIZE
+    LD      E, 0h
+    LD      HL, result
+.loop:
+    LD      A, (HL)
+    DEc     A
+    JR      NZ, .l_wrong
+    LD      A, 'X'
+    JR      .cont
+
+.l_wrong:
+    DEC     A
+    JR      NZ, .l_ok
+    LD      A, ' '
+    JR      .cont
+
+.l_ok:
+    DEC     A
+    JR      NZ, .l_unkn
+    INC     E
+    LD      A, 'O'
+    JR      .cont
+
+.l_unkn:
+    LD      A, '?'
+.cont:
+    CALL    putchar
+    INC     HL
+    DJNZ    .loop
+
+    LD      A, E
+    RET
+
+S_SZ:       DB 7,  "Size: 4"
+S_NCODE:    DB 8,  "Codes: 6"
+S_GUESS:    DB 10, "Guesses: 8"
+S_GNO:      DB 8,  "Guess 0:"
+S_WIN:      DB 8,  "You Win!"
+S_LOSE:     DB 19, "Game Over. Correct:"
 
 ; RAM
 ORG 6000h

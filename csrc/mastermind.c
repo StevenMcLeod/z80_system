@@ -62,23 +62,23 @@ static void test_guess(void) {
     int i, j;
 
     memset(used_codes, 0, sizeof(used_codes));
-    memset(current_result, GUESS_OK, sizeof(current_result));
+    memset(current_result, GUESS_NONE, sizeof(current_result));
 
     // Check for perfect match
     for(i = 0; i < BOARD_SIZE; ++i) {
         if(correct_code[i] == current_code[i]) {
             SET_BIT(used_codes, i);
+            current_result[i] = GUESS_OK;
             continue;
         }
-
-        ++current_result[i];
     }
 
     for(i = 0; i < BOARD_SIZE; ++i) {
-        for(j = 0; j < BOARD_SIZE; ++j) {
-            if(current_result[i] == GUESS_OK)
-                goto cont;
+        if(current_result[i] != GUESS_NONE)
+            continue;
 
+        ++current_result[i];
+        for(j = 0; j < BOARD_SIZE; ++j) {
             if(correct_code[j] == current_code[i]
             && !GET_BIT(used_codes, j)) {
                 
@@ -91,18 +91,6 @@ static void test_guess(void) {
 cont:;
     }
 
-}
-
-static void test_guess(void) {
-    int i, j;
-
-    memset(used_codes, 0, sizeof(used_codes));
-    memset(current_result, GUESS_NONE, sizeof(current_result));
-    
-    for(i = 0; i < BOARD_SIZE; ++i) {
-        for(j = 0; j < BOARD_SIZE; ++j) {
-            if(correct_code[j] == current_code[i]
-    }
 }
 
 static int get_guess(void) {
