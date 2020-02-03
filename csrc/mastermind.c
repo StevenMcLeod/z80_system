@@ -35,9 +35,10 @@
 #define MAX_GUESS   8
 
 typedef enum {
-    GUESS_OK=0,
+    GUESS_NONE=0,
     GUESS_MOVE,
-    GUESS_WRONG
+    GUESS_WRONG,
+    GUESS_OK,
 } guess_t;
 
 /* Globals */
@@ -90,6 +91,18 @@ static void test_guess(void) {
 cont:;
     }
 
+}
+
+static void test_guess(void) {
+    int i, j;
+
+    memset(used_codes, 0, sizeof(used_codes));
+    memset(current_result, GUESS_NONE, sizeof(current_result));
+    
+    for(i = 0; i < BOARD_SIZE; ++i) {
+        for(j = 0; j < BOARD_SIZE; ++j) {
+            if(correct_code[j] == current_code[i]
+    }
 }
 
 static int get_guess(void) {

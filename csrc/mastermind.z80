@@ -1,0 +1,87 @@
+; Constants
+BSIZE: EQU 4
+NCODE: EQU 6
+NGUESS: EQU 8
+
+; Guess Enum
+G_NONE: EQU 0
+G_MOVE: EQU 1
+G_WRONG: EQU 2
+G_OK: EQU 3
+
+; Program
+ORG 0000h
+init:
+    DI
+    LD  SP, 6BFFh
+    JP  start
+
+ORG 0077h
+nmi_handle:
+    ret
+
+ORG 0100h
+start:
+    XOR     A, A
+
+init_board:
+    LD      HL, correct
+
+.loop:
+    CALL    rand
+
+    LD      C, NCODE
+    CALL    mod
+
+    INC     HL
+    LD      A, L
+    AND     A, 0Fh
+    CP      A, BSIZE
+    JR      NZ, .loop
+
+    RET
+
+test_guess:
+    LD      HL, result
+    LD      A, G_NONE
+    LD      BC, BSIZE
+    CALL    memset
+
+    LD      HL, correct
+    LD      DE, current
+    LD      B, BSIZE
+.ok_loop:
+    LD      A, (DE)
+    CP      A, (HL)
+    JR      NZ, .ok_cont
+    
+    LD      A, L
+    AND     A, 0Fh
+    PUSH    HL
+    LD      HL, result
+    ADD     A, L
+    LD      L, A
+    LD      (HL), G_OK
+    POP     HL
+
+.ok_cont:
+    DJNZ    ok_loop
+
+.move_loop:
+    
+    
+
+
+; RAM
+ORG 6000h
+inbuf:
+    DS 256
+
+correct:
+    DS 16
+
+current:
+    DS 16
+
+result:
+    DS 16
