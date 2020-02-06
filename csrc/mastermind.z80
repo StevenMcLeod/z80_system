@@ -16,7 +16,7 @@ init:
     LD  SP, 6BFFh
     JP  start
 
-ORG 0077h
+ORG 0066h
 nmi_handle:
     ret
 
