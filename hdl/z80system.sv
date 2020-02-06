@@ -137,8 +137,14 @@ sm (
 
 // ROM Core
 //rom#("bin/program.bin", 15)
-rom#("U:/ENSC452/z80_system_sources/bin/program.bin", 15)
-myrom (
+//rom#("U:/ENSC452/z80_system_sources/bin/program.bin", 15)
+//myrom (
+//    .clk(masterclk),
+//    .ena(rom_ena),
+//    .ibus(slave_shared_master_bus),
+//    .obus(rom_bus)
+//);
+z80_rom_wrapper myrom (
     .clk(masterclk),
     .ena(rom_ena),
     .ibus(slave_shared_master_bus),

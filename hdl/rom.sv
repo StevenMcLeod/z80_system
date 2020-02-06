@@ -16,12 +16,6 @@ localparam TOTAL_ADDRS      = 2 ** ADDR_W;
 localparam ADDR_MASK        = TOTAL_ADDRS - 1;
 
 logic[DATA_W-1:0] mem[TOTAL_ADDRS];
-// = {
-//    8'h3E, 8'h20, 8'h32, 8'h00,
-//    8'h80, 8'h3C, 8'hFE, 8'h7F,
-//    8'h20, 8'hF8, 8'h18, 8'hF4
-//};
-
 
 logic[DATA_W-1:0] outreg;
 

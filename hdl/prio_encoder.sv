@@ -10,10 +10,10 @@ module prio_encoder #(
 
 always_comb
 begin
-    if(ena == 1'b0) begin
-        out <= '0;
-        valid <= 1'b0;
-    end else begin
+    out <= '0;
+    valid <= 1'b0;
+    
+    if(ena == 1'b1) begin
         for(int i = 0; i < INPUT_QTY; ++i) begin
             if(ins[i] == 1'b1) begin
                 valid <= 1'b1;
