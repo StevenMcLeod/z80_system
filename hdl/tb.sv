@@ -2,8 +2,15 @@
 
 module tb();
 
+localparam real CLKFREQ = 4000000;
+localparam real SERFREQ = 9600;
+localparam int CLKS_PER_BIT = int'(CLKFREQ / SERFREQ);
+
 time clkspeed = 250ns;
 logic clk, rst_n;
+logic ser_in, ser_out;
+
+assign ser_in = 1'b1;
 
 initial
 begin
@@ -24,9 +31,13 @@ initial begin
     rst_n <= 1'b1;
 end
 
-z80test dut(
+z80test#(CLKS_PER_BIT)
+dut(
     .masterclk(clk),
-    .reset_n(rst_n)
+    .reset_n(rst_n),
+
+    .ser_in(ser_in),
+    .ser_out(ser_out)
 );
 
 endmodule
