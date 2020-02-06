@@ -1,8 +1,14 @@
 `include "Z80Bus.vh"
 
-module z80test (
+module z80test#(
+    parameter CLKS_PER_BIT
+)(
     input logic masterclk,
-    input logic reset_n
+    input logic reset_n,
+
+    // UART signals
+    input logic ser_in,
+    output logic ser_out
 );
 
 localparam SLAVE_QTY = 2;
@@ -58,7 +64,7 @@ tv80n mycpu (
     .reset_n(reset_n),
     .clk(cpuclk),
     
-    .wait_n(1'b1),
+    .wait_n(master_shared_slave_bus.mwait),
     .int_n(1'b1),
     .nmi_n(1'b1),
     .busrq_n(1'b1),
@@ -77,6 +83,8 @@ tv80n mycpu (
     .dout(cpu_bus.dmaster)
 );
 
+assign cpu_bus.rdn = cpu_rd;
+assign cpu_bus.wrn = cpu_wr;
 
 // Address decoder
 addr_decoder ad (
@@ -128,7 +136,8 @@ sm (
 );
 
 // ROM Core
-rom#("bin/program.bin", 15)
+//rom#("bin/program.bin", 15)
+rom#("U:/ENSC452/z80_system_sources/bin/program.bin", 15)
 myrom (
     .clk(masterclk),
     .ena(rom_ena),
@@ -137,11 +146,23 @@ myrom (
 );
 
 // OPort core
-oport op (
+//oport op (
+//    .clk(masterclk),
+//    .ena(oport_ena),
+//    .ibus(slave_shared_master_bus),
+//    .obus(oport_bus)
+//);
+
+z80_uart#(CLKS_PER_BIT)
+uart (
     .clk(masterclk),
+    .rst_n(reset_n),
     .ena(oport_ena),
     .ibus(slave_shared_master_bus),
-    .obus(oport_bus)
+    .obus(oport_bus),
+
+    .rx(ser_in),
+    .tx(ser_out)
 );
 
 endmodule : z80test
