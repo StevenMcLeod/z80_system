@@ -8,7 +8,15 @@ module z80test#(
 
     // UART signals
     input logic ser_in,
-    output logic ser_out
+    output logic ser_out,
+    
+    // Debug signals
+    output logic[7:0] debug_ahi,
+    output logic[7:0] debug_alo,
+    output logic[7:0] debug_dmaster,
+    output logic[7:0] debug_dslave,
+    output logic[7:0] debug_cpu_sig,
+    output logic[7:0] debug_enables
 );
 
 localparam SLAVE_QTY = 2;
@@ -28,6 +36,9 @@ logic cpu_mreq,
       cpu_rd,
       cpu_wr,
       cpu_m1;
+
+logic cpu_halt,
+      cpu_rfsh;
       
 // Bus Master Structs
 Z80MasterBus cpu_bus;
@@ -44,12 +55,15 @@ logic[$clog2(SLAVE_QTY)-1:0] bus_sel;
 // Slave enables
 logic rom_ena,
       oport_ena;
-
-/*
- *  INTERFACES
- *
- */
-
+      
+// DEBUG Assigns
+assign debug_ahi = slave_shared_master_bus.addr[15:8];
+assign debug_alo = slave_shared_master_bus.addr[7:0];
+assign debug_dmaster = slave_shared_master_bus.dmaster;
+assign debug_dslave = master_shared_slave_bus.dslave;
+assign debug_cpu_sig = {~cpu_rfsh, ~cpu_halt, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
+assign debug_enables = {ser_out, ser_in, masterclk, ~reset_n, 2'b00, oport_ena, rom_ena};
+      
 // Clock divider
 always @(posedge masterclk)
 begin
@@ -62,7 +76,7 @@ end
 // Z80 Core
 tv80n mycpu (
     .reset_n(reset_n),
-    .clk(cpuclk),
+    .clk(masterclk),
     
     .wait_n(master_shared_slave_bus.mwait),
     .int_n(1'b1),
@@ -74,8 +88,8 @@ tv80n mycpu (
     .iorq_n(cpu_iorq),
     .rd_n(cpu_rd),
     .wr_n(cpu_wr),
-    //.rfsh_n(),
-    //.halt_n(),
+    .rfsh_n(cpu_rfsh),
+    .halt_n(cpu_halt),
     //.busak_n(),
 
     .A(cpu_bus.addr),

@@ -82,11 +82,11 @@ module uart_rx
    output [7:0] o_Rx_Byte
    );
     
-  parameter s_IDLE         = 3'b000;
-  parameter s_RX_START_BIT = 3'b001;
-  parameter s_RX_DATA_BITS = 3'b010;
-  parameter s_RX_STOP_BIT  = 3'b011;
-  parameter s_CLEANUP      = 3'b100;
+  localparam s_IDLE         = 3'b000;
+  localparam s_RX_START_BIT = 3'b001;
+  localparam s_RX_DATA_BITS = 3'b010;
+  localparam s_RX_STOP_BIT  = 3'b011;
+  localparam s_CLEANUP      = 3'b100;
    
   reg           r_Rx_Data_R = 1'b1;
   reg           r_Rx_Data   = 1'b1;
@@ -111,8 +111,6 @@ module uart_rx
   always @(posedge i_Clock)
     begin
       if(i_Rst_n == 1'b0) begin
-        r_Rx_Data_R <= 1'b1;
-        r_Rx_Data <= 1'b1;
         r_Clock_Count <= 0;
         r_Bit_Index = 0;
         r_Rx_Byte = 0;
@@ -245,11 +243,11 @@ module uart_tx
    output      o_Tx_Done
    );
   
-  parameter s_IDLE         = 3'b000;
-  parameter s_TX_START_BIT = 3'b001;
-  parameter s_TX_DATA_BITS = 3'b010;
-  parameter s_TX_STOP_BIT  = 3'b011;
-  parameter s_CLEANUP      = 3'b100;
+  localparam s_IDLE         = 3'b000;
+  localparam s_TX_START_BIT = 3'b001;
+  localparam s_TX_DATA_BITS = 3'b010;
+  localparam s_TX_STOP_BIT  = 3'b011;
+  localparam s_CLEANUP      = 3'b100;
    
   reg [2:0]    r_SM_Main;
   reg [$clog2(CLKS_PER_BIT)-1:0]    r_Clock_Count;
