@@ -10,6 +10,9 @@ time clkspeed = 250ns;
 logic clk, rst_n;
 logic ser_in, ser_out;
 
+logic ser_valid;
+logic[7:0] ser_data;
+
 assign ser_in = 1'b1;
 
 initial
@@ -39,5 +42,24 @@ dut(
     .ser_in(ser_in),
     .ser_out(ser_out)
 );
+
+uart_rx#(CLKS_PER_BIT)
+rx (
+    .i_Clock(clk),
+    .i_Rst_n(rst_n),
+    .i_Rx_Serial(ser_out),
+    .o_Rx_DV(ser_valid),
+    .o_Rx_Byte(ser_data)
+);
+
+always @(posedge clk)
+begin
+    if(ser_valid == 1'b1) begin
+        $write("%c", ser_data);
+        
+        if(ser_data == 8'h7E)
+            $finish;
+    end
+end
 
 endmodule
