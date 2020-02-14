@@ -26,7 +26,7 @@ module tv80s (/*AUTOARG*/
   // Outputs
   m1_n, mreq_n, iorq_n, rd_n, wr_n, rfsh_n, halt_n, busak_n, A, dout, 
   // Inputs
-  reset_n, clk, wait_n, int_n, nmi_n, busrq_n, di
+  cen, reset_n, clk, wait_n, int_n, nmi_n, busrq_n, di
   );
 
   parameter Mode = 0;    // 0 => Z80, 1 => Fast Z80, 2 => 8080, 3 => GB
@@ -34,6 +34,7 @@ module tv80s (/*AUTOARG*/
   parameter IOWait  = 1; // 0 => Single cycle I/O, 1 => Std I/O cycle
 
 
+  input         cen;
   input         reset_n; 
   input         clk; 
   input         wait_n; 
@@ -66,7 +67,7 @@ module tv80s (/*AUTOARG*/
   wire [6:0]    mcycle;
   wire [6:0]    tstate;
 
-  assign    cen = 1;
+  //assign    cen = 1;
 
   tv80_core #(Mode, IOWait) i_tv80_core
     (

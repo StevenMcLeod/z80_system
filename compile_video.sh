@@ -15,8 +15,8 @@ $VLIB ../../work
 $VMAP work ../../work
 
 # Common Components
-$VLOG ../plainrom.sv
-$VLOG ../plainram.sv
+$VLOG ../rom.sv
+$VLOG ../ram.sv
 
 $VLOG paletter.sv
 $VLOG tilegen.sv

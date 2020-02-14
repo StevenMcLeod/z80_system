@@ -1,8 +1,9 @@
-module plainram #(
+module ram #(
     parameter ADDR_W,
     parameter DATA_W = 8
 ) (
     input logic                 clk,
+    input logic                 ena,
     input logic                 rd,
     input logic                 wr,
     input logic[ADDR_W-1:0]     addr,
@@ -21,14 +22,16 @@ assign dout = outreg;
 
 always_ff @(posedge clk)
 begin
-    if(rd == 1'b1) begin
-        outreg <= mem[addr & ADDR_MASK];
-    end
+    if(ena == 1'b1) begin
+        if(rd == 1'b1) begin
+            outreg <= mem[addr];
+        end
 
-    if(wr == 1'b1) begin
-        mem[addr & ADDR_MASK] <= din;
+        if(wr == 1'b1) begin
+            mem[addr] <= din;
+        end
     end
 end
 
-endmodule : plainram
+endmodule : ram
 

@@ -32,6 +32,7 @@ logic[2:0] tile_scanline;
 // Tileram
 logic[9:0] timing_addr, tileram_addr;
 logic[7:0] tileram_din, tileram_dout;
+logic tileram_ena;
 
 // Tilerom access
 logic[10:0] tilerom_index;
@@ -57,15 +58,18 @@ always_comb
 begin
     if(cmpblk == 1'b0) begin
         tileram_addr <= timing_addr;
+        tileram_ena <= 1'b1;
     end else begin
         tileram_addr <= addr;
+        tileram_ena <= ~rdn | ~wrn;
     end
 end
 
 // Visible area 7440h - 77BFh
 // Tileram 2P, 2R
-plainram#(10) tileram (
+ram#(10) tileram (
     .clk(clk),
+    .ena(tileram_ena),
     .rd(1'b1),
     .wr(~wrn),
     .addr(tileram_addr),
@@ -74,7 +78,7 @@ plainram#(10) tileram (
 );
 
 // Vert Colour Decoder 5E
-plainrom#("roms/v-5e.bpr", 8, 4) prom_5e (
+rom#("roms/v-5e.bpr", 8, 4) prom_5e (
     .clk(clk),
     .ena(1'b1),
     .addr({tileram_addr[9:7], tileram_addr[4:0]}),
@@ -82,7 +86,7 @@ plainrom#("roms/v-5e.bpr", 8, 4) prom_5e (
 );
 
 // Tilerom 3P
-plainrom#("roms/v_3pt.bin", 11) rom_3p (
+rom#("roms/v_3pt.bin", 11) rom_3p (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
@@ -90,7 +94,7 @@ plainrom#("roms/v_3pt.bin", 11) rom_3p (
 );
 
 // Tilerom 3N
-plainrom#("roms/v_5h_b.bin", 11) rom_3n (
+rom#("roms/v_5h_b.bin", 11) rom_3n (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),

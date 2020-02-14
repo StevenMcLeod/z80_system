@@ -1,3 +1,5 @@
+`include "Z80Bus.vh"
+
 module z80_uart#(
     parameter CLKS_PER_BIT
 )(

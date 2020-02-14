@@ -29,7 +29,7 @@ module tv80n (/*AUTOARG*/
   // Outputs
   m1_n, mreq_n, iorq_n, rd_n, wr_n, rfsh_n, halt_n, busak_n, A, dout,
   // Inputs
-  reset_n, clk, wait_n, int_n, nmi_n, busrq_n, di
+  cen, reset_n, clk, wait_n, int_n, nmi_n, busrq_n, di
   );
 
   parameter Mode = 0;    // 0 => Z80, 1 => Fast Z80, 2 => 8080, 3 => GB
@@ -37,6 +37,7 @@ module tv80n (/*AUTOARG*/
   parameter IOWait  = 1; // 0 => Single cycle I/O, 1 => Std I/O cycle
 
 
+  input         cen;
   input         reset_n; 
   input         clk; 
   input         wait_n; 
@@ -64,7 +65,7 @@ module tv80n (/*AUTOARG*/
   reg           nxt_rd_n; 
   reg           nxt_wr_n; 
   
-  wire          cen;
+  //wire          cen;
   wire          intcycle_n;
   wire          no_read;
   wire          write;
@@ -73,7 +74,7 @@ module tv80n (/*AUTOARG*/
   wire [6:0]    mcycle;
   wire [6:0]    tstate;
 
-  assign    cen = 1;
+  //assign    cen = 1;
 
   tv80_core #(Mode, IOWait) i_tv80_core
     (
@@ -147,21 +148,21 @@ module tv80n (/*AUTOARG*/
 	end // else: !if(mcycle[0])
     end // always @ *
 
-  always @(negedge clk)
+  always @(posedge clk)
     begin
       if (!reset_n)
         begin
-	  rd_n   <= #1 1'b1;
-	  wr_n   <= #1 1'b1;
-	  iorq_n <= #1 1'b1;
-	  mreq_n <= #1 1'b1;
+	  rd_n   <= 1'b1;
+	  wr_n   <= 1'b1;
+	  iorq_n <= 1'b1;
+	  mreq_n <= 1'b1;
         end
       else
         begin
-	  rd_n <= #1 nxt_rd_n;
-	  wr_n <= #1 nxt_wr_n;
-	  iorq_n <= #1 nxt_iorq_n;
-	  mreq_n <= #1 nxt_mreq_n;
+	  rd_n <= nxt_rd_n;
+	  wr_n <= nxt_wr_n;
+	  iorq_n <= nxt_iorq_n;
+	  mreq_n <= nxt_mreq_n;
 	end // else: !if(!reset_n)
     end // always @ (posedge clk or negedge reset_n)
 
@@ -169,12 +170,12 @@ module tv80n (/*AUTOARG*/
     begin
       if (!reset_n)
         begin
-	  di_reg <= #1 0;
+	  di_reg <= 0;
         end
       else
         begin
 	  if (tstate[2] && wait_n == 1'b1)
-	    di_reg <= #1 di;
+	    di_reg <= di;
 	end // else: !if(!reset_n)
     end // always @ (posedge clk)
   

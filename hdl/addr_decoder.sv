@@ -16,6 +16,10 @@ module addr_decoder (
 
     // Decoded enable signals
     output logic        rom_ena,
+    output logic        ram_ena,
+    output logic        obj_ena,
+    output logic        tile_ena,
+    output logic        io_ena,
     output logic        oport_ena
 );
 
@@ -25,7 +29,11 @@ assign iord  = ~rd_n & ~iorq_n;
 assign iowr  = ~wr_n & ~iorq_n;
 assign inta  = ~m1_n & ~iorq_n;
 
-assign rom_ena = (addr >= 16'h0000 && addr <= 16'h7FFF);
-assign oport_ena = (addr == 16'h8000);
+assign rom_ena = (addr >= 16'h0000 && addr <= 16'h3FFF);
+assign ram_ena = (addr >= 16'h6000 && addr <= 16'h6BFF);
+assign obj_ena = (addr >= 16'h7000 && addr <= 16'h73FF);
+assign tile_ena = (addr >= 16'h7400 && addr <= 16'h77FF);
+assign io_ena = (addr >= 16'h7C00 && addr <= 16'h7DFF);
+assign oport_ena = (addr == 16'h7F00);
 
 endmodule : addr_decoder

@@ -6,7 +6,8 @@ module dkong_video (
 
     // Z80 Interface
     input Z80MasterBus ibus,
-    output Z80SlaveBus obus,
+    output Z80SlaveBus tile_bus,
+    output Z80SlaveBus obj_bus,
 
     // Enables
     input logic tile_ena,
@@ -41,7 +42,7 @@ logic phi_12, phi_34;
 // Vert Gen
 logic vclk;
 logic[7:0] vtiming_f;
-logic cmpblk, cmpblk2, cmpblk2_d;
+logic cmpblk, cmpblk2;
 
 // Color Signals
 logic[3:0] tile_col, obj_col, mux_col;
@@ -49,6 +50,9 @@ logic[1:0] tile_vid, obj_vid, mux_vid;
 
 // Sprite Signals
 logic attrib_cen;
+
+assign tile_bus.mwait = ~vram_busy;
+assign obj_bus.mwait = 1'b1;
 
 // Clock Gen
 // On original dkong board, master clock is 61.44MHz
@@ -208,7 +212,7 @@ tilegen tile (
     .tile_ena(tile_ena),
     .addr(ibus.addr[9:0]),
     .din(ibus.dmaster),
-    .dout(obus.dslave),
+    .dout(tile_bus.dslave),
 
     .es_blk(),
     .vram_busy(vram_busy),
