@@ -46,20 +46,6 @@ begin
     end
 end
 
-//always_comb @(posedge clk)
-//begin
-//    if(rst_n == 1'b0 
-//    || do_clear == 1'b1) begin
-//        r_sig <= 3'b000;
-//        g_sig <= 3'b000;
-//        b_sig <= 3'b000;
-//    end else if(h_half == 1'b1) begin
-//        r_sig <= palette_out[7:5];
-//        g_sig <= palette_out[4:2];
-//        b_sig <= palette_out[1:0];
-//    end
-//end
-
 // First 4 bit PROM
 // Bit 1-0: G[1:0]
 // Bit 3-2: B[1:0]

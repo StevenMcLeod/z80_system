@@ -52,9 +52,6 @@ assign tilerom_index = {tileram_dout, tile_scanline};
 assign tileram_din = din;
 assign dout = tileram_dout;
 
-//assign tile_col = 4'b0000;
-//assign tile_vid = 2'b00;
-
 // VAddr Mux
 always_comb
 begin
@@ -153,7 +150,7 @@ begin
     if(rst_n == 1'b0) begin
         vram_busy <= 1'b0;
     end else if(htiming[9] == 1'b0) begin   // In active video
-        vram_busy <= 1'b1;  // TODO Verify
+        vram_busy <= 1'b1;
     end else if(htiming[2] == 1'b1) begin   // Test if in HBLK
         vram_busy <= &(htiming[7:4]);
     end

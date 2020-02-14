@@ -242,6 +242,4 @@ paletter pal (
     .b_sig(b_sig)
 );
 
-//assign video_valid = ~cmpblk2;
-
 endmodule : dkong_video
