@@ -14,8 +14,8 @@
 #define FIFO_NAME "fifo.in"
 
 #define WIND_TITLE "Screenbuffer"
-#define WIND_H 256
-#define WIND_W 224
+#define WIND_H 224
+#define WIND_W 256
 
 #define FRAME_RATE 60
 #define FRAME_NS (1000000000L / FRAME_RATE)
@@ -138,6 +138,7 @@ int main(void) {
         rc = read(fifo_d, &nextbyte, 1);
     }
 
+    mfb_update(w, pixbuf);
     puts("Received EOF, close window to quit");
     while(mfb_update_events(w) >= 0);
     

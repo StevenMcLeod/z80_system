@@ -41,10 +41,10 @@ end
 
 always_ff @(posedge clk)
 begin
-    if(ena) begin
+    if(ena == 1'b1) begin
         outreg <= mem[addr & ADDR_MASK];
     end
 end
 
-endmodule : rom
+endmodule : plainrom
 

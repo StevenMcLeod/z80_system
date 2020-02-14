@@ -8,54 +8,72 @@ module paletter (
     input logic[1:0] vid,
     input logic[1:0] cref,
 
+    output logic video_valid,
     output logic[2:0] r_sig,
     output logic[2:0] g_sig,
     output logic[1:0] b_sig
 );
 
-logic work_done;
 logic[7:0] palette_out;
 logic[7:0] palette_addr;
+logic cmpblk2_d;
+logic do_clear;
 
 assign palette_addr = {cref, col, vid};
+assign do_clear = (cmpblk2 & cmpblk2_d);
+assign video_valid = ~cmpblk2_d;
 
 always_ff @(posedge clk)
 begin
     if(rst_n == 1'b0) begin
-        work_done <= 1'b0;
+        cmpblk2_d <= 1'b1;
+    end else if(h_half == 1'b0) begin
+        cmpblk2_d <= cmpblk2;
     end
+end
 
-    if(cmpblk2 == 1'b1) begin
+always_ff @(posedge clk)
+begin
+    if(rst_n == 1'b0 
+    || do_clear == 1'b1) begin
         r_sig <= 3'b000;
         g_sig <= 3'b000;
         b_sig <= 3'b000;
     end else if(h_half == 1'b1) begin
-        if(work_done == 1'b0) begin
-            r_sig <= palette_out[2:0];
-            g_sig <= palette_out[5:3];
-            b_sig <= palette_out[7:6];
-        end
-        
-        work_done <= 1'b1;
-    end else if(h_half == 1'b0) begin
-        work_done <= 1'b0;
+        r_sig <= palette_out[7:5];
+        g_sig <= palette_out[4:2];
+        b_sig <= palette_out[1:0];
     end
 end
 
+//always_comb @(posedge clk)
+//begin
+//    if(rst_n == 1'b0 
+//    || do_clear == 1'b1) begin
+//        r_sig <= 3'b000;
+//        g_sig <= 3'b000;
+//        b_sig <= 3'b000;
+//    end else if(h_half == 1'b1) begin
+//        r_sig <= palette_out[7:5];
+//        g_sig <= palette_out[4:2];
+//        b_sig <= palette_out[1:0];
+//    end
+//end
+
 // First 4 bit PROM
-// Bit 0: G[2]
-// Bit 3-1: R[2:0]
-plainrom#("c-2j.bpr", 8, 4) prom_2f (
+// Bit 1-0: G[1:0]
+// Bit 3-2: B[1:0]
+plainrom#("roms/c-2k.bpr", 8, 4) prom_2e (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),
     .dout(palette_out[3:0])
 );
 
-// second 4 bit PROM
-// Bit 1-0: G[1:0]
-// Bit 3-2: B[1:0]
-plainrom#("c-2k.bpr", 8, 4) prom_2e (
+// Second 4 bit PROM
+// Bit 0: G[2]
+// Bit 3-1: R[2:0]
+plainrom#("roms/c-2j.bpr", 8, 4) prom_2f (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),
