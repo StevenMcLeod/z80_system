@@ -15,7 +15,6 @@ logic vram_busy;
 logic do_write;
 
 Z80MasterBus master;
-Z80SlaveBus slave;
 
 assign master.inta = 1'b1;
 
@@ -115,7 +114,8 @@ dkong_video myvid (
     .rst_n(rst_n),
 
     .ibus(master),
-    .obus(slave),
+    .tile_bus(),
+    .obj_bus(),
 
     .tile_ena(1'b0),
     .obj_ena(1'b0),

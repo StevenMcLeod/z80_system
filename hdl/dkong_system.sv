@@ -101,7 +101,7 @@ assign debug_cpu_sig = {~cpu_rfsh, ~cpu_halt, ~master_shared_slave_bus.mwait, ~c
 assign debug_enables = {ser_out, ser_in, masterclk, ~rst_n, 2'b00, oport_ena, rom_ena};
       
 // Z80 Core
-tv80n mycpu (
+tv80s mycpu (
     .reset_n(rst_n),
     //.clk(masterclk),
     //.cen(cpu_clk_ena),

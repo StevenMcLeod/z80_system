@@ -23,7 +23,12 @@ $VLOG z80rom.sv
 $VLOG z80uart.sv
 
 # Bus Masters
-$VLOG core/*
+$VLOG tv80/rtl/core/tv80_alu.v
+$VLOG tv80/rtl/core/tv80_core.v
+$VLOG tv80/rtl/core/tv80_mcode.v
+$VLOG tv80/rtl/core/tv80_reg.v
+$VLOG tv80/rtl/core/tv80n.v
+$VLOG tv80/rtl/core/tv80s.v
 
 # Video Devices
 $VLOG video/paletter.sv

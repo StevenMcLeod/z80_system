@@ -18,7 +18,7 @@ $VMAP work ../work
 $VLOG prio_encoder.sv
 
 # Bus Masters
-$VLOG core/*
+$VLOG tv80/rtl/core/*
 
 # Peripherals
 $VLOG oport.sv

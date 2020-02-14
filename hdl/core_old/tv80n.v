@@ -157,7 +157,7 @@ module tv80n (/*AUTOARG*/
 	  iorq_n <= 1'b1;
 	  mreq_n <= 1'b1;
         end
-      else
+      else if(cen)
         begin
 	  rd_n <= nxt_rd_n;
 	  wr_n <= nxt_wr_n;

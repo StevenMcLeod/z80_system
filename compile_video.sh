@@ -21,8 +21,8 @@ $VLOG ../ram.sv
 $VLOG paletter.sv
 $VLOG tilegen.sv
 $VLOG dkong_video.sv
-$VLOG video_tb.sv +define+TESTFILE='"dkong.game"'
-#$VLOG video_tb.sv +define+TESTFILE='"dkong.title"'
+#$VLOG video_tb.sv +define+TESTFILE='"dkong.game"'
+$VLOG video_tb.sv +define+TESTFILE='"dkong.title"'
 
 # Run Sim
 popd
