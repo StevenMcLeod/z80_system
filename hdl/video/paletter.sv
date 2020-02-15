@@ -49,7 +49,7 @@ end
 // First 4 bit PROM
 // Bit 1-0: G[1:0]
 // Bit 3-2: B[1:0]
-rom#("roms/c-2k.bpr", 8, 4) prom_2e (
+rom#("c-2k.bpr", 8, 4) prom_2e (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),
@@ -59,7 +59,7 @@ rom#("roms/c-2k.bpr", 8, 4) prom_2e (
 // Second 4 bit PROM
 // Bit 0: G[2]
 // Bit 3-1: R[2:0]
-rom#("roms/c-2j.bpr", 8, 4) prom_2f (
+rom#("c-2j.bpr", 8, 4) prom_2f (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),

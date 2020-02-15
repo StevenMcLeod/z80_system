@@ -33,7 +33,7 @@ begin
         for(int bp = 0; bp < BYTES_PER_ADDR; ++bp) begin
             automatic bit[8:0] c = $fgetc(romfile);
             if(c == 'h1FF)
-                $fatal("Rom File not large enough!");
+                $fatal($sformatf("Rom File \"%s\" not large enough!", FNAME));
 
             mem[addr][bp*8 +: 8] = c[7:0];
         end

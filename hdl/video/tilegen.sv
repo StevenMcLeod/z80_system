@@ -78,7 +78,7 @@ ram#(10) tileram (
 );
 
 // Vert Colour Decoder 5E
-rom#("roms/v-5e.bpr", 8, 4) prom_5e (
+rom#("v-5e.bpr", 8, 4) prom_5e (
     .clk(clk),
     .ena(1'b1),
     .addr({tileram_addr[9:7], tileram_addr[4:0]}),
@@ -86,7 +86,7 @@ rom#("roms/v-5e.bpr", 8, 4) prom_5e (
 );
 
 // Tilerom 3P
-rom#("roms/v_3pt.bin", 11) rom_3p (
+rom#("v_3pt.bin", 11) rom_3p (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
@@ -94,7 +94,7 @@ rom#("roms/v_3pt.bin", 11) rom_3p (
 );
 
 // Tilerom 3N
-rom#("roms/v_5h_b.bin", 11) rom_3n (
+rom#("v_5h_b.bin", 11) rom_3n (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),

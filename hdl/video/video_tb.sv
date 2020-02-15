@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 `include "../Z80Bus.vh"
 
 module video_tb();
@@ -41,16 +43,25 @@ end
 
 initial begin
     integer fifo_d;
+    int count = 0;
 
     //fifo_d = $fopen("fifo.in", "w");
-    fifo_d = $fopen("screen.out", "w");
+    fifo_d = $fopen("screen.out", "wb");
     if(fifo_d == 0)
         $fatal("Cannot open fifo");
 
     forever begin
         @(posedge pixelclk);
-        if(do_write == 1'b1)
+        if(do_write == 1'b1) begin
             $fwrite(fifo_d, "%c", ~{b_sig, g_sig, r_sig});
+            $display("%d", count);
+            ++count;
+        end
+        
+        if(count == 256*224) begin
+            $fclose(fifo_d);
+            $finish();
+        end
     end
 end
 
@@ -63,7 +74,7 @@ initial begin
         integer tilefile;
         
         // Load test file
-        tilefile = $fopen({"test_data/", `TESTFILE}, "r");
+        tilefile = $fopen(`TESTFILE, "r");
         if(tilefile == 0)
             $fatal("Could not open test file");
 
