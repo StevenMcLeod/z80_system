@@ -78,28 +78,55 @@ ram#(10) tileram (
 );
 
 // Vert Colour Decoder 5E
-rom#("v-5e.bpr", 8, 4) prom_5e (
+`ifdef SIMULATION
+rom#("v-5e.bpr", 8, 4) prom_2n (
     .clk(clk),
     .ena(1'b1),
     .addr({tileram_addr[9:7], tileram_addr[4:0]}),
     .dout(col_out)
 );
+`else
+tile_2n_prom prom_2n (
+    .clka(clk),
+    .ena(1'b1),
+    .addra({tileram_addr[9:7], tileram_addr[4:0]}),
+    .douta(col_out)
+);
+`endif
 
 // Tilerom 3P
+`ifdef SIMULATION
 rom#("v_3pt.bin", 11) rom_3p (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
     .dout(tilerom_out[0])
 );
+`else
+tile_3p_rom rom_3p (
+    .clka(clk),
+    .ena(~htiming[9]),
+    .addra(tilerom_index),
+    .douta(tilerom_out[0])
+);
+`endif
 
 // Tilerom 3N
+`ifdef SIMULATION
 rom#("v_5h_b.bin", 11) rom_3n (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
     .dout(tilerom_out[1])
 );
+`else
+tile_3n_rom rom_3n (
+    .clka(clk),
+    .ena(~htiming[9]),
+    .addra(tilerom_index),
+    .douta(tilerom_out[1])
+);
+`endif
 
 // Tile Col Reg
 always_ff @(posedge clk)

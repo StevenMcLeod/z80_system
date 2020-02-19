@@ -220,8 +220,12 @@ sm (
 );
 
 // ROM Core
+`ifdef SIMULATION
 z80rom#("roms/prog_rom.bin", 14)
-rom (
+`else
+program_rom_wrapper
+`endif
+cpu_rom (
     .clk(masterclk),
     .ena(rom_ena),
     .ibus(slave_shared_master_bus),
@@ -230,7 +234,7 @@ rom (
 
 // RAM Core
 z80ram#(12)
-ram (
+cpu_ram (
     .clk(masterclk),
     .ena(ram_ena),
     .ibus(slave_shared_master_bus),

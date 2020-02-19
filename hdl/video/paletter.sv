@@ -49,21 +49,39 @@ end
 // First 4 bit PROM
 // Bit 1-0: G[1:0]
 // Bit 3-2: B[1:0]
+`ifdef SIMULATION
 rom#("c-2k.bpr", 8, 4) prom_2e (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),
     .dout(palette_out[3:0])
 );
+`else
+palette_2e_prom prom_2e (
+    .clka(clk),
+    .ena(1'b1),
+    .addra(palette_addr),
+    .douta(palette_out[3:0])
+);
+`endif
 
 // Second 4 bit PROM
 // Bit 0: G[2]
 // Bit 3-1: R[2:0]
+`ifdef SIMULATION
 rom#("c-2j.bpr", 8, 4) prom_2f (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),
     .dout(palette_out[7:4])
 );
+`else
+palette_2f_prom prom_2f (
+    .clka(clk),
+    .ena(1'b1),
+    .addr(palette_addr),
+    .douta(palette_out[7:4])
+);
+`endif
 
 endmodule : paletter
