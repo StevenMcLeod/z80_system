@@ -20,6 +20,15 @@ logic[DATA_W-1:0] outreg;
 
 assign dout = outreg;
 
+`ifdef SIM_CLEAR_RAM
+initial
+begin
+    for(int i = 0; i < TOTAL_ADDRS; ++i) begin
+        mem[i] <= '0;
+    end
+end
+`endif
+
 always_ff @(posedge clk)
 begin
     if(ena == 1'b1) begin

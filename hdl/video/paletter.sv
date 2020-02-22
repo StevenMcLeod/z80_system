@@ -79,7 +79,7 @@ rom#("c-2j.bpr", 8, 4) prom_2f (
 palette_2f_prom prom_2f (
     .clka(clk),
     .ena(1'b1),
-    .addr(palette_addr),
+    .addra(palette_addr),
     .douta(palette_out[7:4])
 );
 `endif

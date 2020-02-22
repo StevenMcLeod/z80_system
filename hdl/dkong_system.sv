@@ -1,7 +1,7 @@
 `include "Z80Bus.vh"
 
 module dkong_system #(
-    parameter CLKS_PER_BIT
+    parameter CLKS_PER_BIT = 1
 )(
     input logic masterclk,
     input logic rst_n,
@@ -98,7 +98,7 @@ assign debug_alo = slave_shared_master_bus.addr[7:0];
 assign debug_dmaster = slave_shared_master_bus.dmaster;
 assign debug_dslave = master_shared_slave_bus.dslave;
 assign debug_cpu_sig = {~cpu_rfsh, ~cpu_halt, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
-assign debug_enables = {ser_out, ser_in, masterclk, ~rst_n, 2'b00, oport_ena, rom_ena};
+assign debug_enables = {oport_ena, io_ena, 2'b00, tile_ena, obj_ena, ram_ena, rom_ena};
       
 // Z80 Core
 tv80s mycpu (
@@ -275,9 +275,9 @@ dkong_video vid (
 always_ff @(posedge masterclk)
 begin
     if(rst_n == 1'b0) begin
-        in0 <= 0;
-        in1 <= 0;
-        in2 <= 0;
+        in0 <= 8'b11100000;
+        in1 <= 8'b11100000;
+        in2 <= 8'b00110000;
         dsw0 <= 'h80;
     end else if(io_ena == 1'b1 && slave_shared_master_bus.rdn == 1'b0) begin
         //casez(slave_shared_master_bus.addr)
