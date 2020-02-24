@@ -51,6 +51,7 @@ logic[1:0] tile_vid, obj_vid, mux_vid;
 // Sprite Signals
 logic attrib_cen;
 
+// Wait Signals
 assign tile_bus.mwait = ~vram_busy;
 assign obj_bus.mwait = 1'b1;
 
@@ -164,7 +165,9 @@ assign cmpblk = vblk | htiming[9];
 always_ff @(posedge clk)
 begin
     // Clked by ~phi_34 -> rising on phi == 4
-    if(phi == 3 && attrib_cen == 1'b1) begin
+    if(rst_n == 1'b0) begin
+        cmpblk2 <= 1'b1;
+    end else if(phi == 3 && attrib_cen == 1'b1) begin
         cmpblk2 <= cmpblk;
     end
 end

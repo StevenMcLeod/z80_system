@@ -1,9 +1,11 @@
 #!/bin/bash
 
+VFLAGS="+define+SIMULATION"
+
 VLIB="vlib.exe"
 VMAP="vmap.exe"
 VCOM="vcom.exe"
-VLOG="vlog.exe"
+VLOG="vlog.exe $VFLAGS"
 VSIM="vsim.exe"
 
 set -e

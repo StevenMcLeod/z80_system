@@ -6,6 +6,7 @@ module addr_decoder (
     input logic         mreq_n,
     input logic         iorq_n,
     input logic         m1_n,
+    input logic         disable_decode,
 
     // Output decoded bus
     output logic        memrd,
@@ -23,17 +24,19 @@ module addr_decoder (
     output logic        oport_ena
 );
 
+wire video_wr_decode_disable;
+
 assign memrd = ~rd_n & ~mreq_n;
 assign memwr = ~wr_n & ~mreq_n;
 assign iord  = ~rd_n & ~iorq_n;
 assign iowr  = ~wr_n & ~iorq_n;
 assign inta  = ~m1_n & ~iorq_n;
 
-assign rom_ena = (addr >= 16'h0000 && addr <= 16'h3FFF);
-assign ram_ena = (addr >= 16'h6000 && addr <= 16'h6BFF);
-assign obj_ena = (addr >= 16'h7000 && addr <= 16'h73FF);
-assign tile_ena = (addr >= 16'h7400 && addr <= 16'h77FF);
-assign io_ena = (addr >= 16'h7C00 && addr <= 16'h7DFF);
-assign oport_ena = (addr == 16'h7F00);
+assign rom_ena = (addr >= 16'h0000 && addr <= 16'h3FFF) && ~disable_decode;
+assign ram_ena = (addr >= 16'h6000 && addr <= 16'h6BFF) && ~disable_decode;
+assign obj_ena = (addr >= 16'h7000 && addr <= 16'h73FF) && ~disable_decode;
+assign tile_ena = (addr >= 16'h7400 && addr <= 16'h77FF) && ~disable_decode;
+assign io_ena = (addr >= 16'h7C00 && addr <= 16'h7DFF) && ~disable_decode;
+assign oport_ena = (addr == 16'h7F00) && ~disable_decode;
 
 endmodule : addr_decoder

@@ -31,7 +31,7 @@ end
 initial begin
     rst_n <= 1'b0;
     
-    repeat(4) begin
+    repeat(20) begin
         @(posedge clk);
     end
     
@@ -50,9 +50,10 @@ dkong (
     .b_sig(b_sig)
 );
 
-framedoubler fd (
+//framedoubler fd (
+framedoubler_slow fd(
     .masterclk(clk),
-    .rst_n(rst_n),
+    .in_rst_n(rst_n),
 
     .in_pixclk(pixelclk),
     .in_valid(valid_video),
@@ -60,6 +61,7 @@ framedoubler fd (
     .in_g(g_sig),
     .in_b(b_sig),
 
+    .out_rst_n(rst_n),
     .out_pixclk(vgaclk)
 );
 

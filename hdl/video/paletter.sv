@@ -50,7 +50,7 @@ end
 // Bit 1-0: G[1:0]
 // Bit 3-2: B[1:0]
 `ifdef SIMULATION
-rom#("c-2k.bpr", 8, 4) prom_2e (
+rom#("roms/palette/c-2k.bpr", 8, 4) prom_2e (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),
@@ -69,7 +69,7 @@ palette_2e_prom prom_2e (
 // Bit 0: G[2]
 // Bit 3-1: R[2:0]
 `ifdef SIMULATION
-rom#("c-2j.bpr", 8, 4) prom_2f (
+rom#("roms/palette/c-2j.bpr", 8, 4) prom_2f (
     .clk(clk),
     .ena(1'b1),
     .addr(palette_addr),

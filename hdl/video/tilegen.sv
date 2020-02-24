@@ -32,7 +32,7 @@ logic[2:0] tile_scanline;
 // Tileram
 logic[9:0] timing_addr, tileram_addr;
 logic[7:0] tileram_din, tileram_dout;
-logic tileram_ena;
+logic tileram_ena, tileram_wr;
 
 // Tilerom access
 logic[10:0] tilerom_index;
@@ -50,6 +50,7 @@ assign timing_addr = {vtiming_f[7:3], htiming_f[8:4]};
 
 assign tilerom_index = {tileram_dout, tile_scanline};
 
+assign tileram_wr = ~wrn & tile_ena;
 assign tileram_din = din;
 assign dout = tileram_dout;
 
@@ -71,7 +72,7 @@ ram#(10) tileram (
     .clk(clk),
     .ena(tileram_ena),
     .rd(1'b1),
-    .wr(~wrn),
+    .wr(tileram_wr),
     .addr(tileram_addr),
     .din(tileram_din),
     .dout(tileram_dout)
@@ -79,7 +80,7 @@ ram#(10) tileram (
 
 // Vert Colour Decoder 5E
 `ifdef SIMULATION
-rom#("v-5e.bpr", 8, 4) prom_2n (
+rom#("roms/tile/v-5e.bpr", 8, 4) prom_2n (
     .clk(clk),
     .ena(1'b1),
     .addr({tileram_addr[9:7], tileram_addr[4:0]}),
@@ -96,7 +97,7 @@ tile_2n_prom prom_2n (
 
 // Tilerom 3P
 `ifdef SIMULATION
-rom#("v_3pt.bin", 11) rom_3p (
+rom#("roms/tile/v_3pt.bin", 11) rom_3p (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
@@ -113,7 +114,7 @@ tile_3p_rom rom_3p (
 
 // Tilerom 3N
 `ifdef SIMULATION
-rom#("v_5h_b.bin", 11) rom_3n (
+rom#("roms/tile/v_5h_b.bin", 11) rom_3n (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),

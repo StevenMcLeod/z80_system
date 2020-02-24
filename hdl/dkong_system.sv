@@ -1,7 +1,9 @@
 `include "Z80Bus.vh"
 
 module dkong_system #(
-    parameter CLKS_PER_BIT = 1
+    parameter CLKS_PER_BIT = 1,
+    parameter DEBUG_WAIT_ENA = 0,
+    parameter IN2_ENA = 0
 )(
     input logic masterclk,
     input logic rst_n,
@@ -17,13 +19,20 @@ module dkong_system #(
     output logic[2:0] g_sig,
     output logic[1:0] b_sig,
     
+    // Controls Signals
+    input logic p1_sw,
+    input logic p2_sw,
+    input logic coin_sw,
+
     // Debug signals
+    input logic debug_wait,
     output logic[7:0] debug_ahi,
     output logic[7:0] debug_alo,
     output logic[7:0] debug_dmaster,
     output logic[7:0] debug_dslave,
     output logic[7:0] debug_cpu_sig,
-    output logic[7:0] debug_enables
+    output logic[7:0] debug_enables,
+    output logic[7:0] debug_misc
 );
 
 localparam MASTER_QTY = 1;
@@ -35,7 +44,7 @@ localparam SLAVE_QTY = 6;
  */
 
 logic cpuclk, cpuclk_d;
-logic cpu_clk_ena;
+logic cpu_clk_rise, cpu_clk_fall;
 
 // CPU signals
 logic cpu_mreq,
@@ -43,6 +52,10 @@ logic cpu_mreq,
       cpu_rd,
       cpu_wr,
       cpu_m1;
+
+logic cpu_wait,
+      cpu_wait_d,
+      cpu_wait_p;
 
 logic cpu_nmi;
 
@@ -97,18 +110,25 @@ assign debug_ahi = slave_shared_master_bus.addr[15:8];
 assign debug_alo = slave_shared_master_bus.addr[7:0];
 assign debug_dmaster = slave_shared_master_bus.dmaster;
 assign debug_dslave = master_shared_slave_bus.dslave;
-assign debug_cpu_sig = {~cpu_rfsh, ~cpu_halt, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
+assign debug_cpu_sig = {~cpu_nmi, slave_shared_master_bus.addr == 'h0066, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
 assign debug_enables = {oport_ena, io_ena, 2'b00, tile_ena, obj_ena, ram_ena, rom_ena};
+assign debug_misc = {
+    ~rst_n,
+    6'b000000,
+    slave_shared_master_bus.addr == 'h0066
+};
+                        
       
 // Z80 Core
 tv80s mycpu (
     .reset_n(rst_n),
     //.clk(masterclk),
-    //.cen(cpu_clk_ena),
+    //.cen(cpu_clk_rise),
     .clk(cpuclk),
     .cen(1'b1),
     
-    .wait_n(master_shared_slave_bus.mwait),
+    .wait_n(cpu_wait),
+    //.wait_n(1'b0),
     .int_n(1'b1),
     .nmi_n(cpu_nmi),
     .busrq_n(1'b1),
@@ -136,7 +156,8 @@ begin
         cpuclk_d <= cpuclk;
 end
 
-assign cpu_clk_ena = cpuclk & ~cpuclk_d;
+assign cpu_clk_rise = cpuclk & ~cpuclk_d;
+assign cpu_clk_fall = ~cpuclk & cpuclk_d;
 
 // NMI generator
 always_ff @(posedge masterclk)
@@ -147,6 +168,31 @@ begin
         cpu_nmi <= 1'b1;
     else if(vblk == 1'b1)
         cpu_nmi <= 1'b0;
+end
+
+// Wait Signal Generator:w
+assign cpu_wait_p = ~cpu_mreq & (cpu_bus.addr[15:10] == 6'b0111_01) & ~tile_bus.mwait;
+
+// 7474 7FA
+always_ff @(posedge masterclk)
+begin
+    if(rst_n == 1'b0) begin
+        cpu_wait <= 1'b1;
+    end else if(vblk == 1'b1) begin
+        cpu_wait <= 1'b1;
+    end else if(cpuclk == 1'b1) begin
+        cpu_wait <= ~cpu_wait_p;
+    end
+end
+
+// 7474 7FB
+always_ff @(posedge masterclk) 
+begin
+    if(rst_n == 1'b0) begin
+        cpu_wait_d <= 1'b1;
+    end else if(cpu_clk_fall == 1'b1) begin
+        cpu_wait_d <= cpu_wait;
+    end
 end
 
 assign cpu_bus.rdn = cpu_rd;
@@ -160,6 +206,7 @@ addr_decoder ad (
     .mreq_n(cpu_mreq),
     .iorq_n(cpu_iorq),
     .m1_n(cpu_m1),
+    .disable_decode(~cpu_wait_d),
 
 //    .memrd(bus_memrd),
 //    .memwr(bus_memwr),
@@ -221,7 +268,7 @@ sm (
 
 // ROM Core
 `ifdef SIMULATION
-z80rom#("roms/prog_rom.bin", 14)
+z80rom#("roms/prog/prog_rom.bin", 14)
 `else
 program_rom_wrapper
 `endif
@@ -275,11 +322,16 @@ dkong_video vid (
 always_ff @(posedge masterclk)
 begin
     if(rst_n == 1'b0) begin
-        in0 <= 8'b11100000;
-        in1 <= 8'b11100000;
-        in2 <= 8'b00110000;
+        in0 <= 8'b00000000;
+        in1 <= 8'b00000000;
+        in2 <= 8'b00000000;
         dsw0 <= 'h80;
-    end else if(io_ena == 1'b1 && slave_shared_master_bus.rdn == 1'b0) begin
+    end else begin
+        if(IN2_ENA)
+            in2 <= {coin_sw, 3'b000, p2_sw, p1_sw, 2'b00};
+    end
+
+    if(io_ena == 1'b1 && slave_shared_master_bus.rdn == 1'b0) begin
         //casez(slave_shared_master_bus.addr)
         //'b0111_1100_0???_????: io_bus.dslave <= in0;    // 7C00h
         //'b0111_1100_1???_????: io_bus.dslave <= in1;    // 7C80h
