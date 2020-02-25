@@ -178,8 +178,28 @@ begin
         vblk_d <= vblk;
 end
 
-// Wait Signal Generator:w
-assign cpu_wait_p = ~cpu_mreq & (cpu_bus.addr[15:10] == 6'b0111_01) & ~tile_bus.mwait;
+// Wait Signal Generator
+// On TV80 Core, cpu_mreq is asserted T2 rising instead of T1 falling. 
+// Ignore cpu_mreq as io bus not used anyways.
+assign cpu_wait_p = (cpu_bus.addr[15:10] == 6'b0111_01) 
+                  //& ~cpu_mreq
+                  & ~tile_bus.mwait;
+
+// In TKG-4 board, this sequence occurs when writing to VRAM during VRAM_BUSY:
+//          |  T 1  |  T 2  |  T W  |
+//   CPUCLK /---\___/---\___/---\___/
+//   ADDR   < mem: vram             >
+//   ~WR    ------------\____________
+//   ~VRAMR ------------~------------
+//   WAIT_P \________________________
+//   WAIT   --------\________________
+//   WAIT_D ------------\____________
+//
+// With TV80 Core, WR goes low on T2 Rising. 
+// WAIT_D signal must be ready T1 Falling. 
+// WAIT can go low T2 Rising as normal or on T1 Falling. (Latter simpler)
+//
+// WAIT is removed, 7474B D pin connected to WAIT_P. WAIT_D connected to wait_n
 
 // 7474 7FA
 always_ff @(posedge masterclk)
@@ -188,20 +208,21 @@ begin
         cpu_wait <= 1'b1;
     end else if(vblk == 1'b1) begin
         cpu_wait <= 1'b1;
-    end else if(cpuclk == 1'b1) begin
+    //end else if(cpu_clk_rise) begin
+    end else if(cpu_clk_fall) begin
         cpu_wait <= ~cpu_wait_p;
     end
 end
 
 // 7474 7FB
-always_ff @(posedge masterclk) 
-begin
-    if(rst_n == 1'b0) begin
-        cpu_wait_d <= 1'b1;
-    end else if(cpu_clk_fall == 1'b1) begin
-        cpu_wait_d <= cpu_wait;
-    end
-end
+//always_ff @(posedge masterclk) 
+//begin
+//    if(rst_n == 1'b0) begin
+//        cpu_wait_d <= 1'b1;
+//    end else if(cpu_clk_fall == 1'b1) begin
+//        cpu_wait_d <= cpu_wait;
+//    end
+//end
 
 assign cpu_bus.rdn = cpu_rd;
 assign cpu_bus.wrn = cpu_wr;
@@ -214,7 +235,7 @@ addr_decoder ad (
     .mreq_n(cpu_mreq),
     .iorq_n(cpu_iorq),
     .m1_n(cpu_m1),
-    .disable_decode(~cpu_wait_d),
+    .disable_decode(~cpu_wait),
 
 //    .memrd(bus_memrd),
 //    .memwr(bus_memwr),
@@ -276,7 +297,7 @@ sm (
 
 // ROM Core
 `ifdef SIMULATION
-z80rom#("roms/prog/prog_rom.bin", 14)
+z80rom#("bin/c_5et_g.bin", 14, 8, 1)
 `else
 program_rom_wrapper
 `endif
