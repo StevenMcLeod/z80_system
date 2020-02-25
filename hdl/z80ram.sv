@@ -18,9 +18,9 @@ ram_imp (
     .ena(ena),
     .rd(~ibus.rdn),
     .wr(~ibus.wrn),
-    .addr(ibus.addr[ADDR_W-1:0]),
-    .din(ibus.dmaster[DATA_W-1:0]),
-    .dout(obus.dslave[DATA_W-1:0])
+    .addr(ibus.addr),
+    .din(ibus.dmaster),
+    .dout(obus.dslave)
 );
 
 endmodule : z80ram

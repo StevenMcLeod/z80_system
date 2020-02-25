@@ -75,7 +75,7 @@ logic audio_irq,
 logic[1:0] cref;
 
 // Video Signals
-logic vblk;
+logic vblk, vblk_d;
       
 // Bus Master Structs
 Z80MasterBus cpu_bus;
@@ -166,8 +166,16 @@ begin
         cpu_nmi <= 1'b1;
     else if(nmi_mask == 1'b0)
         cpu_nmi <= 1'b1;
-    else if(vblk == 1'b1)
+    else if(vblk_d == 1'b0 && vblk == 1'b1)   // Vblk rising
         cpu_nmi <= 1'b0;
+end
+
+always_ff @(posedge masterclk)
+begin
+    if(rst_n == 1'b0)
+        vblk_d <= 1'b0;
+    else
+        vblk_d <= vblk;
 end
 
 // Wait Signal Generator:w
