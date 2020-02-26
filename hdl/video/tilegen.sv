@@ -101,14 +101,14 @@ rom#("roms/tile/v_3pt.bin", 11) rom_3p (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
-    .dout(tilerom_out[0])
+    .dout(tilerom_out[1])
 );
 `else
 tile_3p_rom rom_3p (
     .clka(clk),
     .ena(~htiming[9]),
     .addra(tilerom_index),
-    .douta(tilerom_out[0])
+    .douta(tilerom_out[1])
 );
 `endif
 
@@ -118,14 +118,14 @@ rom#("roms/tile/v_5h_b.bin", 11) rom_3n (
     .clk(clk),
     .ena(~htiming[9]),
     .addr(tilerom_index),
-    .dout(tilerom_out[1])
+    .dout(tilerom_out[0])
 );
 `else
 tile_3n_rom rom_3n (
     .clka(clk),
     .ena(~htiming[9]),
     .addra(tilerom_index),
-    .douta(tilerom_out[1])
+    .douta(tilerom_out[0])
 );
 `endif
 
