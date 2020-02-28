@@ -226,8 +226,27 @@ tilegen tile (
 
 // Sprite Generator
 // For Milestone 2, hardwire outputs
-assign obj_col = 4'b0000;
-assign obj_vid = 2'b00;
+spritegen sprite (
+    .clk(clk),
+    .rst_n(rst_n),
+    
+    .vtiming_f(vtiming_f),
+    .htiming(htiming),
+    .cmpblk2(cmpblk2),
+
+    .flip_ena(flip_ena),
+    .psl2_ena(psl_ena),
+
+    .rdn(ibus.rdn),
+    .wrn(ibus.wrn),
+    .obj_ena(obj_ena),
+    .addr(ibus.addr[9:0]),
+    .din(ibus.dmaster),
+    .dout(obj_bus.dslave),
+
+    .obj_vid(obj_vid),
+    .obj_col(obj_col)
+);
 
 // TEMPORARY UNTIL PAST MILESTONE 2
 assign attrib_cen = ~|(htiming[3:0]);

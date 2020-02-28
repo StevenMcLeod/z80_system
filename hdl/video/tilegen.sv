@@ -43,13 +43,12 @@ logic[2:0] tile_pixel;
 // Colourrom
 logic[3:0] col_out;
 
+// Combinational Assignments
 assign htiming_f = htiming ^ {10{flip_ena}};
 assign tile_scanline = vtiming_f[2:0];
-
-assign timing_addr = {vtiming_f[7:3], htiming_f[8:4]};
-
 assign tilerom_index = {tileram_dout, tile_scanline};
 
+assign timing_addr = {vtiming_f[7:3], htiming_f[8:4]};
 assign tileram_wr = ~wrn & tile_ena;
 assign tileram_din = din;
 assign dout = tileram_dout;
@@ -146,12 +145,12 @@ end
 //   11 - Load
 //
 // When tileram_addr == timing_addr,
-//      5E strobed high by NAND 4H (on 4H:1H = 7)
+//      2J strobed high by NAND 2L (on 4H:1H = 7)
 //      Flip == 0 -> Mode == {1, 5E}, Load/Left.
 //      Flip == 1 -> Mode == {5E, 1}, Load/Right.
 //
 // When tileram_addr == cpu_addr,
-//      5E always 0
+//      2J always 0
 //      Flip == 0 -> Mode == 10, Left.
 //      Flip == 1 -> Mode == 01, Right.
 //      Doesn't matter as video cleared by cmpblk2
