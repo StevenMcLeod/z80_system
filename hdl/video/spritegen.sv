@@ -24,15 +24,13 @@ module spritegen (
     output logic[3:0] obj_col
 );
 
-assign obj_col = 4'b0000;
-assign obj_vid = 2'b00;
-
 // Sprite Add Constant
 localparam SPRITE_ADD_F0 = 8'b1111_1000;    // -8
 localparam SPRITE_ADD_F1 = 8'b1111_1010;    // -6
 
 // Timing
 logic[7:0] vtiming_fc;
+logic new_sprite_clk;
 
 // Vidctrl Derived
 logic flip_ena_gated;
@@ -54,16 +52,22 @@ logic[8:0] scratch_din, scratch_dout;
 logic scratch_wr, scratch_wr_d;
 
 // Scratchpad -> Linebuffer
-logic sprite_flip_offset;
-logic[7:0] sprite_hpos;
+logic[7:0] sprite_flip_offset;
 logic[7:0] sprite_vpos;
 logic[6:0] sprite_index;
+logic sprite_hflip_buf;
 logic sprite_hflip;
 logic sprite_vflip;
-logic sprite_palette;
+logic[3:0] sprite_palette;
 logic[1:0] sprite_state_machine;
+logic do_sprite_output;
+logic stop_sprite_output;
+logic do_sprite_load;
 
 // Linebuffer
+logic linebuf_flip, linebuf_hblk;
+logic linebuf_addr_clr, linebuf_addr_load;
+logic linebuf_addr_clk, linebuf_addr_doneinc;
 logic[7:0] linebuf_addr, linebuf_addr_f;
 logic[5:0] linebuf_newdata;
 logic[5:0] linebuf_din, linebuf_dout;
@@ -76,6 +80,9 @@ logic[15:0] objrom_buf[2];
 logic[3:0]  obj_pixel;
 
 // Combinational Assignments
+
+assign new_sprite_clk = (htiming[3:0] == 0);
+
 assign linebuf_addr_f = linebuf_addr ^ {8{flip_ena}};
 assign obj_scanline = 0;
 assign objrom_index = 0;
@@ -294,12 +301,65 @@ begin
         sprite_flip_offset <= scratch_dout[8:1] + SPRITE_ADD_F1;
 end
 
+// Load VPos
 always_ff @(posedge clk)
 begin
     if(rst_n == 1'b0) begin
         sprite_vpos <= 0;
     end else if(sprite_state_machine == 0) begin
         sprite_vpos <= sprite_flip_offset + vtiming_fc;
+    end
+end
+
+assign do_sprite_output = &(sprite_vpos[7:4]);
+
+// Load Index
+always_ff @(posedge clk)
+begin
+    if(rst_n == 1'b0) begin
+        sprite_vflip <= 0;
+        sprite_index <= 0;
+    end else if(sprite_state_machine == 1) begin
+        sprite_vflip <= scratch_dout[8];
+        sprite_index <= scratch_dout[7:1];
+    end
+end
+
+// Load Attrib
+always_ff @(posedge clk)
+begin
+    if(rst_n == 1'b0) begin
+        sprite_hflip <= 0;
+        sprite_palette <= 0;
+    end else if(sprite_state_machine == 2) begin
+        sprite_hflip <= scratch_dout[8];
+        sprite_palette <= scratch_dout[4:1];
+    end
+end
+
+// Buffered Signals
+always_ff @(posedge clk)
+begin
+    if(rst_n == 1'b0) begin
+        sprite_hflip_buf <= 0;
+        linebuf_hblk <= 0;
+        linebuf_flip <= 0;
+        linebuf_newdata[5:2] <= 0;
+    end else if(htiming[3:0] == 0) begin    // TODO should this be only on rising
+        sprite_hflip_buf <= sprite_hflip;
+        linebuf_hblk <= ~htiming[9];
+        linebuf_flip <= flip_ena & ~htiming[9];
+        linebuf_newdata[5:2] <= sprite_palette;
+    end
+end
+
+// JKFF 8N
+always_ff @(posedge clk)
+begin
+    if(rst_n == 1'b0 || htiming[9] == 1'b0) begin
+        stop_sprite_output <= 1'b0;
+    end else if(sprite_state_machine == 0) begin
+        stop_sprite_output <= stop_sprite_output | scratch_dout[0];
     end
 end
 
@@ -311,20 +371,24 @@ end
 //   10 - Left
 //   11 - Load
 //
-// When , 
-//      2J strobed high by NAND 2L (on 4H:1H = 7)
-//      VFlip == 0 -> Mode == {1, 5E}, Load/Left.
-//      VFlip == 1 -> Mode == {5E, 1}, Load/Right.
+// When do_spr_out & ~stop_spr_out & ~&[4H:1/2H] == 1
+//      VFlip == 0 -> Mode == 11, Load.
+//      VFlip == 1 -> Mode == 11, Load.
+//      Load step in sprite, lasts 1 pix
 //
-// When ,
-//      2J always 0
+// When ~do_spr_out | stop_spr_out | &[4H:1/2H] == 0
 //      VFlip == 0 -> Mode == 10, Left.
 //      VFlip == 1 -> Mode == 01, Right.
-//      Doesn't matter as video cleared by cmpblk2
+//      Shift step in sprite, lasts 15 pix
+//      On stop_spr_out, all bits will be 0s
+assign do_sprite_load = do_sprite_output
+                      & ~stop_sprite_output 
+                      & ~&(htiming[3:0]);
+
 always_ff @(posedge clk)
 begin
     if(phi == 3) begin // Clocked on rising ~phi_34
-        if(SHIFT_COND) begin
+        if(do_sprite_load) begin
             // Load new sprite
             for(int i = 0; i < $size(objrom_buf); ++i) begin
                 objrom_buf[i] <= objrom_out[i];
@@ -333,15 +397,67 @@ begin
     end
 end
 
-assign obj_pixel = sprite_vpos[3:0] ^ {4{sprite_hflip}};
+assign obj_pixel = sprite_vpos[3:0] ^ {4{sprite_hflip_buf}};
 
 always_comb
 begin
-    for(int i = 0; i < $size(tilerom_buf); ++i) begin
-        linebuf_newdata[i][1:0] <= tilerom_buf[i][tile_pixel];
+    for(int i = 0; i < $size(objrom_buf); ++i) begin
+        linebuf_newdata[i][1:0] <= objrom_buf[i][obj_pixel];
     end
 end
 
+// Part 3: linebuffer -> vidmux
+assign obj_col = linebuf_dout[5:2];
+assign obj_vid = linebuf_din[1:0];
 
+// Linebuf din mux
+always_comb
+begin
+    if(linebuf_hblk == 1'b0) begin
+        linebuf_din <= 6'b000000;
+    end else if(linebuf_newdata[1:0] != 2'b00) begin
+        linebuf_din <= linebuf_newdata;
+    end else begin
+        linebuf_din <= linebuf_dout;
+    end
+end
+
+assign linebuf_addr_clk = (phi == 3)
+                       && (htiming[0] | ~linebuf_hblk); 
+
+// Linebuffer State Machine
+always_comb
+begin
+    logic[1:0] to_decode = {~htiming[9], htiming[3]};
+
+    linebuf_addr_clr <= 1'b0;
+    linebuf_addr_load <= 1'b0;
+
+    if(new_sprite_clk == 1'b0) begin
+        // Nothing
+    end else if(to_decode == 2'b01) begin
+        linebuf_addr_load <= 1'b1;
+    end else if(to_decode == 2'b11) begin
+        linebuf_addr_clr <= ~linebuf_hblk; 
+    end
+end
+
+always_ff @(posedge clk) begin
+    if(rst_n == 1'b0 || linebuf_addr_clr) begin
+        linebuf_addr <= 0;
+    end else if(linebuf_addr_clk == 1'b0) begin     // Do inc on falling
+        if(linebuf_addr_load == 1'b1) begin         // Load new hpos
+            linebuf_addr <= sprite_flip_offset;
+        end else begin                              // Increment current hpos
+            linebuf_addr <= linebuf_addr + 1;
+        end
+
+        linebuf_addr_doneinc <= 1'b1;
+    end else if(linebuf_addr_clk == 1'b1) begin
+        linebuf_addr_doneinc <= 1'b0;
+    end
+end
+
+assign linebuf_addr_f = linebuf_addr ^ {8{linebuf_flip}};
 
 endmodule : spritegen

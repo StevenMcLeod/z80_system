@@ -20,6 +20,7 @@ module addr_decoder (
     output logic        ram_ena,
     output logic        obj_ena,
     output logic        tile_ena,
+    output logic        dma_ena,
     output logic        io_ena,
     output logic        oport_ena
 );
@@ -36,6 +37,7 @@ assign rom_ena = (addr >= 16'h0000 && addr <= 16'h3FFF) && ~disable_decode;
 assign ram_ena = (addr >= 16'h6000 && addr <= 16'h6BFF) && ~disable_decode;
 assign obj_ena = (addr >= 16'h7000 && addr <= 16'h73FF) && ~disable_decode;
 assign tile_ena = (addr >= 16'h7400 && addr <= 16'h77FF) && ~disable_decode;
+assign dma_ena = (addr >= 16'h7800 && addr <= 16'h780F) && ~disable_decode;
 assign io_ena = (addr >= 16'h7C00 && addr <= 16'h7DFF) && ~disable_decode;
 assign oport_ena = (addr == 16'h7F00) && ~disable_decode;
 

@@ -35,8 +35,8 @@ module dkong_system #(
     output logic[7:0] debug_misc
 );
 
-localparam MASTER_QTY = 1;
-localparam SLAVE_QTY = 6;
+localparam MASTER_QTY = 2;
+localparam SLAVE_QTY = 7;
 
 /*
  *  SIGNALS
@@ -78,7 +78,8 @@ logic[1:0] cref;
 logic vblk, vblk_d;
       
 // Bus Master Structs
-Z80MasterBus cpu_bus;
+Z80MasterBus cpu_bus,
+             dma_master_bus;
 Z80SlaveBus  master_shared_slave_bus;
 
 // Bus Slave Structs
@@ -86,6 +87,7 @@ Z80SlaveBus  rom_bus,                   // 0000h - 3FFFh
              ram_bus,                   // 6000h - 6BFFh
              obj_bus,                   // 7000h - 73FFh
              tile_bus,                  // 7400h - 77FFh
+             dma_slave_bus,             // 7800h - 780Fh
              io_bus,                    // 7C00h - 7D87h
              oport_bus;                 // 7F00h - 7F00h
             
@@ -99,7 +101,7 @@ logic rom_ena,
       ram_ena,
       obj_ena,
       tile_ena,
-//      dma_ena,
+      dma_ena,
 //      bgm_ena,
 //      sfx_ena,
       io_ena,
@@ -111,7 +113,7 @@ assign debug_alo = slave_shared_master_bus.addr[7:0];
 assign debug_dmaster = slave_shared_master_bus.dmaster;
 assign debug_dslave = master_shared_slave_bus.dslave;
 assign debug_cpu_sig = {~cpu_nmi, slave_shared_master_bus.addr == 'h0066, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
-assign debug_enables = {oport_ena, io_ena, 2'b00, tile_ena, obj_ena, ram_ena, rom_ena};
+assign debug_enables = {oport_ena, io_ena, 1'b0, dma_ena, tile_ena, obj_ena, ram_ena, rom_ena};
 assign debug_misc = {
     ~rst_n,
     6'b000000,
@@ -227,6 +229,23 @@ end
 assign cpu_bus.rdn = cpu_rd;
 assign cpu_bus.wrn = cpu_wr;
 
+// DMA Controller
+fakedma dmac (
+    .clk(masterclk),
+    .rst_n(rst_n),
+    .cen(cpuclk),
+
+    .s_ibus(slave_shared_master_bus),
+    .s_obus(dma_slave_bus),
+    .m_obus(dma_master_bus),
+    .m_ibus(master_shared_slave_bus),
+
+    .busrq(~cpu_busrq),
+    .busack(~cpu_busack),
+    .dma_wait(~cpu_wait),
+    .rdy(dma_rdy)
+);
+
 // Address decoder
 addr_decoder ad (
     .addr(cpu_bus.addr),
@@ -247,7 +266,7 @@ addr_decoder ad (
     .ram_ena(ram_ena),
     .obj_ena(obj_ena),
     .tile_ena(tile_ena),
-    //.dma_ena(dma_ena),
+    .dma_ena(dma_ena),
     //.bgm_ena(bgm_ena),
     //.sfx_ena(sfx_ena),
     .io_ena(io_ena),
@@ -263,7 +282,7 @@ ena_to_muxsel (
         io_ena,
 //        sfx_ena,
 //        bgm_ena,
-//        dma_ena,
+        dma_ena,
         tile_ena,
         obj_ena,
         ram_ena,
@@ -277,7 +296,8 @@ ena_to_muxsel (
 sysmux#(MASTER_QTY, SLAVE_QTY)
 sm (
     .master_ins({
-    	cpu_bus
+        cpu_bus,
+        dma_master_bus
     }),
     .master_out(slave_shared_master_bus),
     
@@ -286,6 +306,7 @@ sm (
         ram_bus,
         obj_bus,
         tile_bus,
+        dma_bus,
         io_bus,
         oport_bus
     }),

@@ -224,6 +224,9 @@ tilegen tile (
     .tile_col(tile_col)
 );
 
+//assign obj_vid = 0;
+//assign obj_col = 0;
+
 // Sprite Generator
 // For Milestone 2, hardwire outputs
 spritegen sprite (
@@ -233,6 +236,7 @@ spritegen sprite (
     .vtiming_f(vtiming_f),
     .htiming(htiming),
     .cmpblk2(cmpblk2),
+    .attrib_cen(attrib_cen),
 
     .flip_ena(flip_ena),
     .psl2_ena(psl_ena),
