@@ -1,3 +1,23 @@
+//; TC_STOP | ROT_PRIO | CH_1 | CH_0
+//b@780F = 53
+// 
+//; CH0_ADDR = 6900
+//b@7800 = 00 
+//b@7800 = 69 
+//
+//; CH0_CNT = WR | 0x180
+//b@7801 = 80 
+//b@7801 = 41 
+//
+//; CH1_ADDR = 7000
+//b@7802 = 00 
+//b@7802 = 70 
+//
+//; CH1_CNT = RD | 0x180
+//b@7803 = 80 
+//b@7803 = 81
+
+
 module fakedma (
     input logic clk,
     input logic rst_n,
