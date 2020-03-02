@@ -55,7 +55,8 @@ uart_tx#(CLKS_PER_BIT) tx_dev (
     .i_Tx_DV(out_valid),
     .i_Tx_Byte(out_data),
     .o_Tx_Active(out_busy),
-    .o_Tx_Serial(tx)
+    .o_Tx_Serial(tx),
+    .o_Tx_Done()
 );
 
 endmodule : z80_uart

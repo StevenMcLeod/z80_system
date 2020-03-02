@@ -42,9 +42,9 @@ logic objram_ena, objram_wr;
 
 // Objram -> Scratch
 logic[7:0] objram_buf;
-logic sprite_on_scanline, do_scratch_write;
+logic sprites_at_max, end_of_sprites_marker;
+logic sprite_on_scanline, do_scratch_write, do_scratch_write_clk;
 logic[7:0] scratch_load_addr;
-logic scratch_at_max;
 
 // Scratchpad
 logic[5:0] scratch_timing_addr, scratch_addr;
@@ -69,26 +69,26 @@ logic linebuf_flip, linebuf_hblk;
 logic linebuf_addr_clr, linebuf_addr_load;
 logic linebuf_addr_clk, linebuf_addr_doneinc;
 logic[7:0] linebuf_addr, linebuf_addr_f;
+logic[3:0] linebuf_col;
+logic[1:0] linebuf_vid;
 logic[5:0] linebuf_newdata;
 logic[5:0] linebuf_din, linebuf_dout;
 logic linebuf_wr;
 
 // Objrom
-logic[11:0] objrom_index;
+logic[10:0] objrom_index;
 logic[15:0] objrom_out[2];
 logic[15:0] objrom_buf[2];
 logic[3:0]  obj_pixel;
+logic[3:0]  obj_scanline;
 
 // Combinational Assignments
 
 assign new_sprite_clk = (htiming[3:0] == 0);
 
-assign linebuf_addr_f = linebuf_addr ^ {8{flip_ena}};
-assign obj_scanline = 0;
-assign objrom_index = 0;
 
 assign objram_timing_addr = {psl2_ena, htiming[8:0]};
-assign objram_wr = ~wrn & ~obj_ena;
+assign objram_wr = ~wrn & obj_ena;
 assign objram_din = din;
 assign dout = objram_dout;
 
@@ -96,12 +96,12 @@ assign dout = objram_dout;
 // VAddr Mux
 always_comb
 begin
-    if((~rdn | ~wrn | ~rqn) == 1'b0) begin
-        objram_addr <= objram_timing_addr;
-        objram_ena <= 1'b1;
-    end else begin
+    if(obj_ena && (~rdn | ~wrn | ~rqn)) begin
         objram_addr <= addr;
         objram_ena <= ~rdn | ~wrn;
+    end else begin
+        objram_addr <= objram_timing_addr;
+        objram_ena <= 1'b1;
     end
 end
 
@@ -134,39 +134,39 @@ ram#(8, 6) linebuffer (
     .ena(1'b1),
     .rd(1'b1),
     .wr(linebuf_wr),
-    .addr(linebuf_addr),
+    .addr(linebuf_addr_f),
     .din(linebuf_din),
     .dout(linebuf_dout)
 );
 
 // Sprite ROMs 7C, 7D
 `ifdef SIMULATION
-rom#("roms/sprite/l-4m_b.bin") rom_7c (
+rom#("roms/sprite/l_4m_b.bin", 11) rom_7c (
     .clk(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addr(objrom_index),
     .dout(objrom_out[1][15:8])
 );
 `else
 obj_7c_rom rom_7c (
     .clka(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addra(objrom_index),
     .douta(objrom_out[1][15:8])
 );
 `endif
 
 `ifdef SIMULATION
-rom#("roms/sprite/l-4n_b.bin") rom_7d (
+rom#("roms/sprite/l_4n_b.bin", 11) rom_7d (
     .clk(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addr(objrom_index),
     .dout(objrom_out[1][7:0])
 );
 `else
 obj_7d_rom rom_7d (
     .clka(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addra(objrom_index),
     .douta(objrom_out[1][7:0])
 );
@@ -174,32 +174,32 @@ obj_7d_rom rom_7d (
 
 // Sprite ROMs 7E, 7F
 `ifdef SIMULATION
-rom#("roms/sprite/l-4r_b.bin") rom_7e (
+rom#("roms/sprite/l_4r_b.bin", 11) rom_7e (
     .clk(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addr(objrom_index),
     .dout(objrom_out[0][15:8])
 );
 `else
 obj_7e_rom rom_7e (
     .clka(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addra(objrom_index),
     .douta(objrom_out[0][15:8])
 );
 `endif
 
 `ifdef SIMULATION
-rom#("roms/sprite/l-4s_b.bin") rom_7f (
+rom#("roms/sprite/l_4s_b.bin", 11) rom_7f (
     .clk(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addr(objrom_index),
     .dout(objrom_out[0][7:0])
 );
 `else
 obj_7f_rom rom_7f (
     .clka(clk),
-    .ena(~htiming[9]),
+    .ena(htiming[9]),
     .addra(objrom_index),
     .douta(objrom_out[0][7:0])
 );
@@ -214,6 +214,7 @@ obj_7f_rom rom_7f (
 //
 
 // Part 1: objram -> scratchpad logic
+// TODO: Last end_of_sprites_marker cut off, could impact sprites at 0x1FF
 always_ff @(posedge clk)
 begin
     // Clocked on falling phi_12 -> phi == 2
@@ -223,7 +224,7 @@ begin
     end
 end
 
-assign scratch_din[0] = scratch_at_max;
+assign scratch_din[0] = end_of_sprites_marker;
 
 always_comb
 begin
@@ -251,11 +252,12 @@ begin
 end
 
 assign scratch_timing_addr = htiming[7:2];
+assign sprites_at_max = |(scratch_load_addr[7:6]);
+assign end_of_sprites_marker = &(htiming[8:2]) & ~sprites_at_max;
 assign scratch_wr = (phi == 0) 
-                 && (htiming[9] == 1'b1) 
+                 && (htiming[9] == 1'b0) 
                  && do_scratch_write 
-                 && ~|(scratch_load_addr[7:6]);
-assign scratch_at_max = &(htiming[8:2]) & ~|(scratch_load_addr[7:6]);
+                 && ~sprites_at_max;
 
 always_comb
 begin
@@ -266,12 +268,14 @@ begin
     end
 end
 
+assign do_scratch_write_clk = (htiming[1:0] == 2'b01) && phi == 4;
+
 always_ff @(posedge clk)
 begin
-    if(rst_n == 1'b0 || htiming == 1'b1) begin
+    if(rst_n == 1'b0 || htiming[9] == 1'b1) begin
         do_scratch_write <= 1'b0;
-    end else if(htiming[1:0] == 2'b01) begin // TODO does this need to be only rising
-        do_scratch_write <= sprite_on_scanline | scratch_at_max;
+    end else if(do_scratch_write_clk) begin 
+        do_scratch_write <= sprite_on_scanline | end_of_sprites_marker;
     end
 end
 
@@ -344,12 +348,12 @@ begin
         sprite_hflip_buf <= 0;
         linebuf_hblk <= 0;
         linebuf_flip <= 0;
-        linebuf_newdata[5:2] <= 0;
+        linebuf_col <= 0;
     end else if(htiming[3:0] == 0) begin    // TODO should this be only on rising
         sprite_hflip_buf <= sprite_hflip;
         linebuf_hblk <= ~htiming[9];
         linebuf_flip <= flip_ena & ~htiming[9];
-        linebuf_newdata[5:2] <= sprite_palette;
+        linebuf_col <= sprite_palette;
     end
 end
 
@@ -359,7 +363,8 @@ begin
     if(rst_n == 1'b0 || htiming[9] == 1'b0) begin
         stop_sprite_output <= 1'b0;
     end else if(sprite_state_machine == 0) begin
-        stop_sprite_output <= stop_sprite_output | scratch_dout[0];
+        if(scratch_dout[0] == 1'b1)
+            stop_sprite_output <= 1'b1;
     end
 end
 
@@ -383,7 +388,7 @@ end
 //      On stop_spr_out, all bits will be 0s
 assign do_sprite_load = do_sprite_output
                       & ~stop_sprite_output 
-                      & ~&(htiming[3:0]);
+                      & &(htiming[3:0]);
 
 always_ff @(posedge clk)
 begin
@@ -397,18 +402,21 @@ begin
     end
 end
 
-assign obj_pixel = sprite_vpos[3:0] ^ {4{sprite_hflip_buf}};
+assign obj_scanline = sprite_vpos[3:0] ^ {4{sprite_vflip}};
+assign objrom_index = {sprite_index, obj_scanline};
+assign obj_pixel = ~(htiming[3:0] ^ {4{sprite_hflip_buf}});
 
 always_comb
 begin
     for(int i = 0; i < $size(objrom_buf); ++i) begin
-        linebuf_newdata[i][1:0] <= objrom_buf[i][obj_pixel];
+        linebuf_vid[i] <= objrom_buf[i][obj_pixel];
     end
 end
 
 // Part 3: linebuffer -> vidmux
 assign obj_col = linebuf_dout[5:2];
 assign obj_vid = linebuf_din[1:0];
+assign linebuf_newdata = {linebuf_col, linebuf_vid};
 
 // Linebuf din mux
 always_comb
@@ -428,11 +436,12 @@ assign linebuf_addr_clk = (phi == 3)
 // Linebuffer State Machine
 always_comb
 begin
-    logic[1:0] to_decode = {~htiming[9], htiming[3]};
-
+    logic[1:0] to_decode;
+    
     linebuf_addr_clr <= 1'b0;
     linebuf_addr_load <= 1'b0;
 
+    to_decode = {~htiming[9], htiming[3]};
     if(new_sprite_clk == 1'b0) begin
         // Nothing
     end else if(to_decode == 2'b01) begin
@@ -445,7 +454,8 @@ end
 always_ff @(posedge clk) begin
     if(rst_n == 1'b0 || linebuf_addr_clr) begin
         linebuf_addr <= 0;
-    end else if(linebuf_addr_clk == 1'b0) begin     // Do inc on falling
+    end else if(linebuf_addr_clk == 1'b0
+    && linebuf_addr_doneinc != 1'b1) begin     // Do inc on falling
         if(linebuf_addr_load == 1'b1) begin         // Load new hpos
             linebuf_addr <= sprite_flip_offset;
         end else begin                              // Increment current hpos
@@ -459,5 +469,6 @@ always_ff @(posedge clk) begin
 end
 
 assign linebuf_addr_f = linebuf_addr ^ {8{linebuf_flip}};
+assign linebuf_wr = linebuf_addr_clk;
 
 endmodule : spritegen

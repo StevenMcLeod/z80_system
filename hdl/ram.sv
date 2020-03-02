@@ -24,7 +24,7 @@ assign dout = outreg;
 initial
 begin
     for(int i = 0; i < TOTAL_ADDRS; ++i) begin
-        mem[i] <= '0;
+        mem[i] = '0;
     end
 end
 `endif

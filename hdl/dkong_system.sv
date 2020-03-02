@@ -57,9 +57,11 @@ logic cpu_wait,
       cpu_wait_d,
       cpu_wait_p;
 
-logic cpu_nmi;
+logic cpu_nmi,
+      cpu_busrq_inv, cpu_busrq;
 
-logic cpu_halt,
+logic cpu_busack,
+      cpu_halt,
       cpu_rfsh;
 
 // Input Ports
@@ -112,7 +114,7 @@ assign debug_ahi = slave_shared_master_bus.addr[15:8];
 assign debug_alo = slave_shared_master_bus.addr[7:0];
 assign debug_dmaster = slave_shared_master_bus.dmaster;
 assign debug_dslave = master_shared_slave_bus.dslave;
-assign debug_cpu_sig = {~cpu_nmi, slave_shared_master_bus.addr == 'h0066, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
+assign debug_cpu_sig = {~cpu_nmi, ~cpu_busrq, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
 assign debug_enables = {oport_ena, io_ena, 1'b0, dma_ena, tile_ena, obj_ena, ram_ena, rom_ena};
 assign debug_misc = {
     ~rst_n,
@@ -133,7 +135,7 @@ tv80s mycpu (
     //.wait_n(1'b0),
     .int_n(1'b1),
     .nmi_n(cpu_nmi),
-    .busrq_n(1'b1),
+    .busrq_n(cpu_busrq),
     
     .m1_n(cpu_m1),
     .mreq_n(cpu_mreq),
@@ -142,12 +144,18 @@ tv80s mycpu (
     .wr_n(cpu_wr),
     .rfsh_n(cpu_rfsh),
     .halt_n(cpu_halt),
-    .busak_n(),
+    .busak_n(cpu_busack),
 
     .A(cpu_bus.addr),
     .di(master_shared_slave_bus.dslave),
     .dout(cpu_bus.dmaster)
 );
+
+assign cpu_bus.rdn = cpu_rd;
+assign cpu_bus.wrn = cpu_wr;
+assign cpu_bus.mreqn = cpu_mreq;
+assign cpu_bus.iorqn = cpu_iorq;
+assign cpu_busrq = ~cpu_busrq_inv;
 
 // Clock enable
 always_ff @(posedge masterclk)
@@ -226,40 +234,40 @@ end
 //    end
 //end
 
-assign cpu_bus.rdn = cpu_rd;
-assign cpu_bus.wrn = cpu_wr;
-
 // DMA Controller
 fakedma dmac (
     .clk(masterclk),
     .rst_n(rst_n),
-    .cen(cpuclk),
+    .cen(cpu_clk_rise),
 
+    .ena(dma_ena),
     .s_ibus(slave_shared_master_bus),
     .s_obus(dma_slave_bus),
     .m_obus(dma_master_bus),
     .m_ibus(master_shared_slave_bus),
 
-    .busrq(~cpu_busrq),
+    .busrq(cpu_busrq_inv),
     .busack(~cpu_busack),
     .dma_wait(~cpu_wait),
     .rdy(dma_rdy)
 );
 
+
 // Address decoder
+// TODO this needs to be controlled by slave_shared_master_bus
 addr_decoder ad (
-    .addr(cpu_bus.addr),
-    .rd_n(cpu_rd),
-    .wr_n(cpu_wr),
-    .mreq_n(cpu_mreq),
-    .iorq_n(cpu_iorq),
+    .addr(slave_shared_master_bus.addr),
+    .rd_n(slave_shared_master_bus.rdn),
+    .wr_n(slave_shared_master_bus.wrn),
+    .mreq_n(slave_shared_master_bus.mreqn),
+    .iorq_n(slave_shared_master_bus.iorqn),
     .m1_n(cpu_m1),
     .disable_decode(~cpu_wait),
 
-//    .memrd(bus_memrd),
-//    .memwr(bus_memwr),
-//    .iord(bus_iord),
-//    .iowr(bus_iowr),
+    .memrd(),
+    .memwr(),
+    .iord(),
+    .iowr(),
     .inta(cpu_bus.inta),
 
     .rom_ena(rom_ena),
@@ -289,6 +297,7 @@ ena_to_muxsel (
         rom_ena
     }),
 
+    .valid(),
     .out(bus_sel)
 );
 
@@ -306,19 +315,19 @@ sm (
         ram_bus,
         obj_bus,
         tile_bus,
-        dma_bus,
+        dma_slave_bus,
         io_bus,
         oport_bus
     }),
     .slave_out(master_shared_slave_bus),
     
-    .msel(1'b0),
+    .msel(~cpu_busack),
     .ssel(bus_sel)
 );
 
 // ROM Core
 `ifdef SIMULATION
-z80rom#("bin/c_5et_g.bin", 14, 8, 1)
+z80rom#("roms/prog/prog_rom.bin", 14, 8, 1)
 `else
 program_rom_wrapper
 `endif

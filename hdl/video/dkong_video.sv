@@ -167,7 +167,7 @@ begin
     // Clked by ~phi_34 -> rising on phi == 4
     if(rst_n == 1'b0) begin
         cmpblk2 <= 1'b1;
-    end else if(phi == 3 && attrib_cen == 1'b1) begin
+    end else if(phi == 3 && htiming[3:0] == 4'b0000) begin
         cmpblk2 <= cmpblk;
     end
 end
@@ -233,16 +233,17 @@ spritegen sprite (
     .clk(clk),
     .rst_n(rst_n),
     
+    .phi(phi),
     .vtiming_f(vtiming_f),
     .htiming(htiming),
     .cmpblk2(cmpblk2),
-    .attrib_cen(attrib_cen),
 
     .flip_ena(flip_ena),
-    .psl2_ena(psl_ena),
+    .psl2_ena(psl2_ena),
 
     .rdn(ibus.rdn),
     .wrn(ibus.wrn),
+    .rqn(1'b1),
     .obj_ena(obj_ena),
     .addr(ibus.addr[9:0]),
     .din(ibus.dmaster),

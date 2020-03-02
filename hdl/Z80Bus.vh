@@ -5,6 +5,7 @@ typedef struct packed {
     logic[15:0] addr;
     logic[7:0]  dmaster;
     logic       rdn, wrn;
+    logic       mreqn, iorqn;
     logic       inta;
 } Z80MasterBus;
 

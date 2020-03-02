@@ -1,9 +1,11 @@
 #!/bin/bash
 
+VFLAGS="+define+SIMULATION"
+
 VLIB="vlib.exe"
 VMAP="vmap.exe"
 VCOM="vcom.exe"
-VLOG="vlog.exe"
+VLOG="vlog.exe $VFLAGS"
 VSIM="vsim.exe"
 
 set -e
@@ -20,9 +22,12 @@ $VLOG ../ram.sv
 
 $VLOG paletter.sv
 $VLOG tilegen.sv
+$VLOG spritegen.sv
 $VLOG dkong_video.sv
-#$VLOG video_tb.sv +define+TESTFILE='"dkong.game"'
-$VLOG video_tb.sv +define+TESTFILE='"dkong.title"'
+#$VLOG video_tb.sv
+#$VLOG video_tb.sv +define+TESTFILE='"test_data/dkong.game"'
+#$VLOG video_tb.sv +define+TESTFILE='"test_data/dkong.title"'
+$VLOG video_tb.sv +define+TESTFILE='"test_data/dkong.sprite"'
 
 # Run Sim
 popd

@@ -36,17 +36,21 @@ always_comb
 begin
     if(MASTER_QTY == 1 
         || msel < MASTER_QTY) begin
-        master_out.dmaster <= master_ins[msel].dmaster;
-        master_out.addr    <= master_ins[msel].addr;
-        master_out.rdn     <= master_ins[msel].rdn;
-        master_out.wrn     <= master_ins[msel].wrn;
-        master_out.inta    <= master_ins[msel].inta;
+        master_out.dmaster  <= master_ins[msel].dmaster;
+        master_out.addr     <= master_ins[msel].addr;
+        master_out.rdn      <= master_ins[msel].rdn;
+        master_out.wrn      <= master_ins[msel].wrn;
+        master_out.mreqn    <= master_ins[msel].mreqn;
+        master_out.iorqn    <= master_ins[msel].iorqn;
+        master_out.inta     <= master_ins[msel].inta;
     end else begin
-        master_out.dmaster <= '0;
-        master_out.addr <= '0;
-        master_out.rdn  <= 1'b0;
-        master_out.wrn  <= 1'b0;
-        master_out.inta <= 1'b0;
+        master_out.dmaster  <= '0;
+        master_out.addr     <= '0;
+        master_out.rdn      <= 1'b0;
+        master_out.wrn      <= 1'b0;
+        master_out.mreqn    <= 1'b0;
+        master_out.iorqn    <= 1'b0;
+        master_out.inta     <= 1'b0;
     end
 end
 

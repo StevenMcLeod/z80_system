@@ -31,10 +31,12 @@ $VLOG tv80/rtl/core/tv80_mcode.v
 $VLOG tv80/rtl/core/tv80_reg.v
 $VLOG tv80/rtl/core/tv80n.v
 $VLOG tv80/rtl/core/tv80s.v
+$VLOG fakedma.sv
 
 # Video Devices
 $VLOG video/paletter.sv
 $VLOG video/tilegen.sv
+$VLOG video/spritegen.sv
 $VLOG video/dkong_video.sv
 
 # System Devices

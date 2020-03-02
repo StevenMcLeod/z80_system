@@ -17,6 +17,7 @@ logic vram_busy;
 logic do_write;
 
 Z80MasterBus master;
+logic do_ena;
 
 assign master.inta = 1'b1;
 
@@ -91,10 +92,10 @@ initial begin
 
 `else
     // Predetermined pattern
-    i = 'h040;
+    i = 'h000;
 
     for(int j = 0; j < $size(tiledump); ++j) begin
-        tiledump[j] = j % 'h0A;
+        tiledump[j] = j & 'hFF;
     end
 
 `endif
@@ -102,16 +103,19 @@ initial begin
     @(posedge rst_n);
 
     master.rdn = 1'b1;
+    do_ena = 1'b0;
     while(i < 'h400) begin
         @(posedge clk);
         if(vram_busy == 1'b0) begin
             master.addr = i;
             master.dmaster = tiledump[i & 'h3FF];
             master.wrn = 1'b0;
+            do_ena = 1'b1;
 
             ++i;
         end else begin
             master.wrn = 1'b1;
+            do_ena = 1'b0;
         end
     end
 
@@ -129,7 +133,7 @@ dkong_video myvid (
     .obj_bus(),
 
     .tile_ena(1'b0),
-    .obj_ena(1'b0),
+    .obj_ena(do_ena),
 
     .grid_ena(1'b0),
     .flip_ena(1'b1),
