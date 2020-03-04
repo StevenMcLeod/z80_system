@@ -30,7 +30,6 @@ localparam SPRITE_ADD_F1 = 8'b1111_1010;    // -6
 
 // Timing
 logic[7:0] vtiming_fc;
-logic new_sprite_clk;
 
 // Vidctrl Derived
 logic flip_ena_gated;
@@ -65,9 +64,9 @@ logic stop_sprite_output;
 logic do_sprite_load;
 
 // Linebuffer
-logic linebuf_flip, linebuf_hblk;
+logic linebuf_flip, linebuf_hblkn;
 logic linebuf_addr_clr, linebuf_addr_load;
-logic linebuf_addr_clk, linebuf_addr_doneinc;
+logic linebuf_addr_clk;
 logic[7:0] linebuf_addr, linebuf_addr_f;
 logic[3:0] linebuf_col;
 logic[1:0] linebuf_vid;
@@ -83,10 +82,6 @@ logic[3:0]  obj_pixel;
 logic[3:0]  obj_scanline;
 
 // Combinational Assignments
-
-assign new_sprite_clk = (htiming[3:0] == 0);
-
-
 assign objram_timing_addr = {psl2_ena, htiming[8:0]};
 assign objram_wr = ~wrn & obj_ena;
 assign objram_din = din;
@@ -346,12 +341,12 @@ always_ff @(posedge clk)
 begin
     if(rst_n == 1'b0) begin
         sprite_hflip_buf <= 0;
-        linebuf_hblk <= 0;
+        linebuf_hblkn <= 0;
         linebuf_flip <= 0;
         linebuf_col <= 0;
-    end else if(htiming[3:0] == 0) begin    // TODO should this be only on rising
+    end else if(phi == 3 && htiming[3:0] == 4'b1111) begin
         sprite_hflip_buf <= sprite_hflip;
-        linebuf_hblk <= ~htiming[9];
+        linebuf_hblkn <= ~htiming[9];
         linebuf_flip <= flip_ena & ~htiming[9];
         linebuf_col <= sprite_palette;
     end
@@ -421,7 +416,7 @@ assign linebuf_newdata = {linebuf_col, linebuf_vid};
 // Linebuf din mux
 always_comb
 begin
-    if(linebuf_hblk == 1'b0) begin
+    if(linebuf_hblkn == 1'b1) begin
         linebuf_din <= 6'b000000;
     end else if(linebuf_newdata[1:0] != 2'b00) begin
         linebuf_din <= linebuf_newdata;
@@ -431,40 +426,51 @@ begin
 end
 
 assign linebuf_addr_clk = (phi == 3)
-                       && (htiming[0] | ~linebuf_hblk); 
+                       && (htiming[0] | ~linebuf_hblkn); 
 
 // Linebuffer State Machine
+//always_comb
+//begin
+//    logic[1:0] to_decode;
+//    
+//    linebuf_addr_clr <= 1'b0;
+//    linebuf_addr_load <= 1'b0;
+//
+//    to_decode = {~htiming[9], htiming[3]};
+//    if(new_sprite_clk == 1'b0) begin
+//        // Nothing
+//    end else if(to_decode == 2'b01) begin
+//        linebuf_addr_load <= 1'b1;
+//    end else if(to_decode == 2'b11) begin
+//        linebuf_addr_clr <= ~linebuf_hblkn; 
+//    end
+//end
 always_comb
 begin
-    logic[1:0] to_decode;
-    
     linebuf_addr_clr <= 1'b0;
     linebuf_addr_load <= 1'b0;
 
-    to_decode = {~htiming[9], htiming[3]};
-    if(new_sprite_clk == 1'b0) begin
-        // Nothing
-    end else if(to_decode == 2'b01) begin
-        linebuf_addr_load <= 1'b1;
-    end else if(to_decode == 2'b11) begin
-        linebuf_addr_clr <= ~linebuf_hblk; 
+    if(&(htiming[3:0]) == 1'b1) begin
+        if(htiming[9] == 1'b1) begin
+            linebuf_addr_load <= 1'b1;
+        end else begin
+            linebuf_addr_clr <= ~linebuf_hblkn;
+        end
     end
 end
 
+
 always_ff @(posedge clk) begin
-    if(rst_n == 1'b0 || linebuf_addr_clr) begin
+    if(rst_n == 1'b0) begin
         linebuf_addr <= 0;
-    end else if(linebuf_addr_clk == 1'b0
-    && linebuf_addr_doneinc != 1'b1) begin     // Do inc on falling
-        if(linebuf_addr_load == 1'b1) begin         // Load new hpos
+    end else if(linebuf_addr_clk == 1'b1) begin         // Do inc on falling
+        if(linebuf_addr_clr == 1'b1) begin              // Synchronous Clear
+            linebuf_addr <= 0;
+        end else if(linebuf_addr_load == 1'b1) begin    // Load new hpos
             linebuf_addr <= sprite_flip_offset;
-        end else begin                              // Increment current hpos
+        end else begin                                  // Increment current hpos
             linebuf_addr <= linebuf_addr + 1;
         end
-
-        linebuf_addr_doneinc <= 1'b1;
-    end else if(linebuf_addr_clk == 1'b1) begin
-        linebuf_addr_doneinc <= 1'b0;
     end
 end
 
