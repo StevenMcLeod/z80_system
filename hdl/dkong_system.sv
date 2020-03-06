@@ -3,6 +3,8 @@
 module dkong_system #(
     parameter CLKS_PER_BIT = 1,
     parameter DEBUG_WAIT_ENA = 0,
+    parameter IN0_ENA = 0,
+    parameter IN1_ENA = 0,
     parameter IN2_ENA = 0
 )(
     input logic masterclk,
@@ -20,6 +22,18 @@ module dkong_system #(
     output logic[1:0] b_sig,
     
     // Controls Signals
+    input logic p1_r,
+    input logic p1_l,
+    input logic p1_u,
+    input logic p1_d,
+    input logic p1_b1,
+
+    input logic p2_r,
+    input logic p2_l,
+    input logic p2_u,
+    input logic p2_d,
+    input logic p2_b1,
+
     input logic p1_sw,
     input logic p2_sw,
     input logic coin_sw,
@@ -384,8 +398,12 @@ begin
         in0 <= 8'b00000000;
         in1 <= 8'b00000000;
         in2 <= 8'b00000000;
-        dsw0 <= 'h80;
+        dsw0 <= 'h00;
     end else begin
+        if(IN0_ENA)
+            in0 <= {3'b000, p1_b1, p1_d, p1_u, p1_l, p1_r};
+        if(IN1_ENA)
+            in1 <= {3'b000, p2_b1, p2_d, p2_u, p2_l, p2_r};
         if(IN2_ENA)
             in2 <= {coin_sw, 3'b000, p2_sw, p1_sw, 2'b00};
     end

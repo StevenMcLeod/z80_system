@@ -1,6 +1,8 @@
 module dkong_system_wrapper #(
     parameter CLKS_PER_BIT = 1,
     parameter DEBUG_WAIT_ENA = 0,
+    parameter IN0_ENA = 0,
+    parameter IN1_ENA = 0,
     parameter IN2_ENA = 0
 ) (
     input wire masterclk,
@@ -14,6 +16,18 @@ module dkong_system_wrapper #(
     output wire[2:0] r_sig,
     output wire[2:0] g_sig,
     output wire[1:0] b_sig,
+
+    input wire p1_r,
+    input wire p1_l,
+    input wire p1_u,
+    input wire p1_d,
+    input wire p1_b1,
+
+    input wire p2_r,
+    input wire p2_l,
+    input wire p2_u,
+    input wire p2_d,
+    input wire p2_b1,
 
     input wire p1_sw,
     input wire p2_sw,
@@ -31,6 +45,8 @@ module dkong_system_wrapper #(
 dkong_system#(
     CLKS_PER_BIT,
     DEBUG_WAIT_ENA,
+    IN0_ENA,
+    IN1_ENA,
     IN2_ENA
 ) inst (
     .masterclk(masterclk),
@@ -44,6 +60,18 @@ dkong_system#(
     .r_sig(r_sig),
     .g_sig(g_sig),
     .b_sig(b_sig),
+
+    .p1_r(p1_r),
+    .p1_l(p1_l),
+    .p1_u(p1_u),
+    .p1_d(p1_d),
+    .p1_b1(p1_b1),
+
+    .p2_r(p2_r),
+    .p2_l(p2_l),
+    .p2_u(p2_u),
+    .p2_d(p2_d),
+    .p2_b1(p2_b1),
 
     .p1_sw(p1_sw),
     .p2_sw(p2_sw),

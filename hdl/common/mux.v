@@ -33,3 +33,25 @@ begin
 end
 
 endmodule
+
+module demux2#(
+    parameter WIDTH = 1,
+    parameter DISABLE_VAL = 1'b0
+)(
+    input wire sel,
+    input wire[WIDTH-1:0] iny,
+    output reg[WIDTH-1:0] outa, outb
+);
+
+always @(iny, sel)
+begin
+    outa <= 0;
+    outb <= 0;
+    
+    case(sel)
+    1'b0: outa <= iny;
+    1'b1: outb <= iny;
+    endcase
+end
+
+endmodule
