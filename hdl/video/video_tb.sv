@@ -16,6 +16,8 @@ logic pixelclk;
 logic vram_busy;
 logic do_write;
 
+int frames = 2;
+
 Z80MasterBus master;
 logic do_ena;
 
@@ -59,7 +61,7 @@ initial begin
             ++count;
         end
         
-        if(count == 256*224) begin
+        if(count == frames*256*224) begin
             $fclose(fifo_d);
             $finish();
         end
