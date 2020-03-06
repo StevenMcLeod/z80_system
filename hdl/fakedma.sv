@@ -224,7 +224,7 @@ begin
             next_state <= STATE_S4;
     end else if(state == STATE_S4) begin
         // Check BUSACK, RDY
-        if(busack && rdy && dma_cnt[drqn] != 0)
+        if(busack && rdy && dma_cnt[next_drqn] != 0)
             next_state <= STATE_S1;
         else
             next_state <= STATE_SI;
