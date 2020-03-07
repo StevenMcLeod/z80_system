@@ -45,8 +45,8 @@ module demux2#(
 
 always @(iny, sel)
 begin
-    outa <= 0;
-    outb <= 0;
+    outa <= DISABLE_VAL;
+    outb <= DISABLE_VAL;
     
     case(sel)
     1'b0: outa <= iny;
