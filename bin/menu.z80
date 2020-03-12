@@ -1,0 +1,281 @@
+;.MACRO MEMSET
+;    RST     08h
+;.ENDM
+;
+;.MACRO JMPTBL
+;    RST     38h
+;.ENDM
+
+; Screen formula
+; (((29-y) & 1Fh) << 5) | (x & 1Fh)
+
+    ORG 0000h
+    XOR     A
+    LD      (7D84h), A
+    JP      init
+    NOP
+
+    ; void memset(void *dst, u8 b, u16 sz)
+    ; Input: HL - dst
+    ;        A  - b
+    ;        BC - sz
+    ; Modifies: BC, DE, HL
+memset:
+    LD      E, L
+    LD      D, H
+    LD      (HL), A
+    INC     DE
+    DEC     BC
+    LDIR
+    RET
+
+    ; void mmemcpy(void *dst, void *src, u8 sz)
+    ; Input: HL - dst
+    ;        DE - src
+    ;        B  - sz
+    ; Modifies: A, B, DE, HL
+mmemcpy:
+    LD      A, (DE)
+    LD      (HL), A
+    INC     HL
+    INC     DE
+    DJNZ    mmemcpy
+    RET
+    NOP
+
+    ;.ORG 0038h
+    DEFS (38h - ASMPC), 00h
+    ; void dojmptbl(void (*jmptbl[])(void), u8 idx)
+    ; Input: HL - jmptbl
+    ;        A  - jmptbl idx (up to 127 entry)
+    ; Modifies: A, DE, HL
+dojmptbl:
+    ADD     A, A
+    LD      E, A
+    LD      D, 0h
+    ADD     HL, DE
+    LD      E, (HL)
+    INC     HL
+    LD      D, (HL)
+    EX      DE, HL
+    JP      (HL)
+    
+    ;.ORG 0066h    
+    DEFS (66h - ASMPC), 00h
+    PUSH    AF
+    PUSH    BC
+    PUSH    DE
+    PUSH    HL
+    PUSH    IX
+    PUSH    IY
+
+    XOR     A
+    LD      (7D84h), A
+
+    LD      HL, FRAMECNT
+    INC     (HL)
+
+    POP     IY
+    POP     IX
+    POP     HL
+    POP     DE
+    POP     BC
+
+    LD      A, 01h
+    LD      (7D84h), A
+    POP     AF
+    RET
+
+init:
+    LD      SP, 6C00h
+
+    ; Clear workram
+    LD      HL, 6000h
+    LD      BC, 0BFEh
+    RST     08h
+
+    ; Clear vidram
+    LD      HL, 7000h
+    LD      BC, 0400h
+    RST     08h
+    
+    LD      A, 10h
+    LD      BC, 0400h
+    RST     08h
+    
+    XOR     A
+    
+    INC     A
+    LD      (7D82h), A
+
+    ;LD      B, 08h
+    ;LD      HL, S_TESTING
+    ;LD      DE, 030Ah        ; (Y = 6, X = 17)
+    ;CALL    printstr
+
+    CALL    input_test
+
+    HALT
+
+    ; printstr(u8 *str, u16 scrpos, u8 sz)
+    ; Input: HL - str
+    ;        DE - scrpos    (5 bit vert, 5 bit horiz)
+    ;        B  - sz
+    ; Modifies: A, BC, DE, HL
+printstr:
+    ; Offset scrpos
+    LD      A, 74h
+    ADD     A, D
+    LD      D, A
+    LD      C, 20h  ; Horiz. incr
+
+    ; stride_memcpy(void *dst, void *src, u8 sz, u8 stride)
+    ; Input: HL - dst
+    ;        DE - src
+    ;        B  - sz
+    ;        C  - stride
+    ; Modifies: A, B, DE, HL
+vid_memcpy:
+    LD      A, (HL)
+    LD      (DE), A
+    INC     HL
+
+    LD      A, E
+    SUB     C
+    LD      E, A
+    JR      NC, do_djnz
+    DEC     D
+
+do_djnz:
+    DJNZ    vid_memcpy
+    RET
+
+    ; void printhex(u16 scrpos, u8 b)
+    ; Input: DE - scrpos
+    ;        C  - b
+    ; Modifies: A, C, DE
+printhex:
+    LD      A, 74h
+    ADD     A, D
+    LD      D, A
+    
+    LD      A, C
+    AND     0Fh
+    CP      0Ah
+    JR      NC, do_printhex0
+    ADD     11h - 0Ah
+do_printhex0:
+    LD      (DE), A
+    LD      A, E
+    SUB     20h
+    LD      E, A
+    JR      NC, start_printhex1
+    DEC     D
+start_printhex1:
+    LD      A, C
+    AND     0F0h
+    RRCA
+    RRCA
+    RRCA
+    RRCA
+    CP      0Ah
+    JR      NC, do_printhex1
+    ADD     11h - 0Ah
+do_printhex1:
+    LD      (DE), A
+    RET
+
+    ; void printbin(u16 scrpos, u8 b)
+    ; Input: DE - scrpos
+    ;        C  - b
+    ; Modifies: A, BC, DE
+printbin:
+    LD      A, 74h
+    ADD     A, D
+    LD      D, A
+
+    LD      B, 8
+printbin_loop:
+    LD      A, C
+    RLCA
+    LD      C, A
+
+    SBC     A       ; CF=0: A=00, CF=1: A=FF
+    CPL
+    INC     A
+
+    LD      (DE), A
+    LD      A, E
+    SUB     20h
+    LD      E, A
+    JR      NC, printbin_test
+    DEC     D
+printbin_test:
+    DJNZ    printbin_loop
+    RET
+
+input_test:
+    LD      HL, S_TESTING
+    LD      DE, 03A6h
+    LD      B, 8
+    CALL    printstr
+    
+    LD      DE, 03A7h
+    LD      B, 4
+    CALL    printstr
+
+    LD      DE, 03A8h
+    LD      B, 4
+    CALL    printstr
+
+    LD      DE, 03A9h
+    LD      B, 4
+    CALL    printstr
+
+    LD      DE, 03AAh
+    LD      B, 5
+    CALL    printstr
+
+    ; Push framecnt for later use
+    LD      A, (FRAMECNT)
+    PUSH    AF
+input_test_loop:
+    LD      A, (7C00h)
+    LD      C, A
+    LD      DE, 02E7h
+    CALL    printbin
+
+    LD      A, (7C80h)
+    LD      C, A
+    LD      DE, 02E8h
+    CALL    printbin
+
+    LD      A, (7D00h)
+    LD      C, A
+    LD      DE, 02E9h
+    CALL    printbin
+
+    LD      A, (7D80h)
+    LD      C, A
+    LD      DE, 02EAh
+    CALL    printbin
+
+    LD      HL, FRAMECNT
+    POP     AF
+input_test_wait:
+    CP      A, (HL)
+    JR      NZ, input_test_wait
+    LD      A, (HL)
+    PUSH    AF
+    JR      input_test_loop
+    
+; Strings
+S_TESTING: DEFB 24h, 15h, 23h, 24h, 19h, 1Eh, 17h, 2Eh
+S_PORT0:   DEFB 19h, 1Eh, 00h, 2Eh
+S_PORT1:   DEFB 19h, 1Eh, 01h, 2Eh
+S_PORT2:   DEFB 19h, 1Eh, 02h, 2Eh
+S_DSW0:    DEFB 14h, 23h, 27h, 00h, 2Eh
+
+
+;FRAMECNT: equ 6000h
+DEFC FRAMECNT=6000h
