@@ -1,13 +1,74 @@
-;.MACRO MEMSET
-;    RST     08h
-;.ENDM
-;
-;.MACRO JMPTBL
-;    RST     38h
-;.ENDM
+MEMSET: MACRO
+    RST     08h
+ENDM
+
+JMPTBL: MACRO
+    RST     38h
+ENDM
+
+;DEF_MENU: MACRO qty fl name hdl par
+;    DB qty, fl
+;    DW name, hdl, par
+;ENDM
+
+;DEF_CHILD: MACRO name 
+;    DW name 
+;ENDM
 
 ; Screen formula
 ; (((29-y) & 1Fh) << 5) | (x & 1Fh)
+
+; Enums
+CTRL_RIGHT: equ 01h
+CTRL_LEFT: equ 02h
+CTRL_UP: equ 04h
+CTRL_DOWN: equ 08h
+CTRL_JUMP: equ 10h
+
+COIN_COIN: equ 80h
+COIN_P1: equ 04h
+COIN_P2: equ 08h
+
+; RAM Addresses
+FRAMECNT: equ 6000h
+CURSOR_POS: equ 600Ch
+EXIT_MENU: equ 600Dh
+CURR_MENU: equ 600Eh
+
+P1_LAST: equ 6010h
+P1_RISING: equ 6011h
+P2_LAST: equ 6012h
+P2_RISING: equ 6013h
+COIN_LAST: equ 6014h
+COIN_RISING: equ 6015h
+
+TENCOUNTER: equ 6001h
+
+TC_BASE: equ 6030h
+TC_SCROLL: equ 6030h
+
+GAME_MENU: equ 6080h
+
+; Ports
+WRAM: equ 6000h
+OBJRAM: equ 7000h
+VRAM: equ 7400h
+DMAC: equ 7800h
+
+BG_REG: equ 7C00h
+SFX_REG: equ 7D00h
+AUD_IRQ: equ 7D80h
+GRID_ENA: equ 7D81h
+FLIP_ENA: equ 7D82h
+PSL2_ENA: equ 7D83h
+NMI_MASK: equ 7D84h
+DMA_RDY: equ 7D85h
+CREF: equ 7D86h
+
+IN0: equ 7C00h
+IN1: equ 7C80h
+IN2: equ 7D00h
+DSW: equ 7D80h
 
     ORG 0000h
     XOR     A
@@ -43,8 +104,15 @@ mmemcpy:
     RET
     NOP
 
+deref16:
+    LD      A, (HL)
+    INC     HL
+    LD      H, (HL)
+    LD      L, A
+    RET
+
     ;.ORG 0038h
-    DEFS (38h - ASMPC), 00h
+    DEFS 38h-$, 00h
     ; void dojmptbl(void (*jmptbl[])(void), u8 idx)
     ; Input: HL - jmptbl
     ;        A  - jmptbl idx (up to 127 entry)
@@ -61,7 +129,8 @@ dojmptbl:
     JP      (HL)
     
     ;.ORG 0066h    
-    DEFS (66h - ASMPC), 00h
+    ; NMI Handler
+    DEFS 66h-$, 00h
     PUSH    AF
     PUSH    BC
     PUSH    DE
@@ -70,10 +139,13 @@ dojmptbl:
     PUSH    IY
 
     XOR     A
-    LD      (7D84h), A
+    LD      (NMI_MASK), A
 
     LD      HL, FRAMECNT
     INC     (HL)
+
+    CALL    do_ctrls
+    CALL    do_tencounter
 
     POP     IY
     POP     IX
@@ -82,40 +154,146 @@ dojmptbl:
     POP     BC
 
     LD      A, 01h
-    LD      (7D84h), A
+    LD      (NMI_MASK), A
     POP     AF
+    RET
+
+do_ctrls:
+    ; Rising = !last & now
+
+    ; P1
+    LD      HL, P1_LAST
+    LD      A, (HL)
+    CPL
+    LD      E, A
+    LD      A, (IN0)
+    LD      (HL), A
+    AND     1Fh
+    AND     E
+    INC     HL
+    LD      (HL), A
+    
+    ; P2
+    INC     HL
+    LD      A, (HL)
+    CPL
+    LD      E, A
+    LD      A, (IN1)
+    LD      (HL), A
+    AND     1Fh
+    AND     E
+    INC     HL
+    LD      (HL), A
+
+    ; Coin
+    INC     HL
+    LD      A, (HL)
+    CPL
+    LD      E, A
+    LD      A, (IN2)
+    LD      (HL), A
+    AND     8Ch
+    AND     E
+    INC     HL
+    LD      (HL), A
+    RET
+
+do_tencounter:
+    LD      A, (TENCOUNTER)
+    INC     A
+    CP      10
+    JR      NZ, tc_update
+    
+    LD      B, 10h
+    LD      HL, TC_BASE
+tc_loop:
+    LD      A, (HL)
+    OR      A
+    JR      Z, tc_cont
+    DEC     A
+    LD      (HL), A
+tc_cont:
+    INC     HL
+    DJNZ    tc_loop
+
+    XOR     A
+tc_update:
+    LD      (TENCOUNTER), A
     RET
 
 init:
     LD      SP, 6C00h
 
     ; Clear workram
-    LD      HL, 6000h
+    LD      HL, WRAM
     LD      BC, 0BFEh
     RST     08h
 
     ; Clear vidram
-    LD      HL, 7000h
+    LD      HL, OBJRAM
     LD      BC, 0400h
     RST     08h
     
     LD      A, 10h
     LD      BC, 0400h
     RST     08h
+
+    CALL    init_game_names
     
     XOR     A
+    LD      (CREF), A
     
     INC     A
-    LD      (7D82h), A
+    LD      (FLIP_ENA), A
+    LD      (CREF+1), A
+    LD      (NMI_MASK), A
 
-    ;LD      B, 08h
-    ;LD      HL, S_TESTING
-    ;LD      DE, 030Ah        ; (Y = 6, X = 17)
-    ;CALL    printstr
+    ;CALL    input_test
+    CALL    draw_border
+    CALL    do_menu
 
-    CALL    input_test
-
+wait_loop:
     HALT
+    JR      wait_loop
+
+init_game_names:
+    ; This is a stub for now, must access through 7F00h
+    ; Copy initial menu
+    LD      DE, M_GAMES
+    LD      HL, GAME_MENU+1
+    LD      B, 07h
+    RST     10h
+
+    LD      A, 3
+    LD      (GAME_MENU), A
+    LD      HL, GAME_MENU+8
+
+    LD      (HL), S_DKONG & 00FFh
+    INC     HL
+    LD      (HL), S_DKONG >> 8
+    INC     HL
+
+    LD      (HL), S_DKONGJR & 00FFh
+    INC     HL
+    LD      (HL), S_DKONGJR >> 8
+    INC     HL
+
+    LD      (HL), S_RADARSCP & 00FFh
+    INC     HL
+    LD      (HL), S_RADARSCP >> 8
+    INC     HL
+
+    LD      HL, 6080h
+    LD      (CURR_MENU), HL
+    RET
+
+    ; printpstr(u8 *pstr, u16 scrpos)
+    ; Input: HL - str
+    ;        DE - scrpos    (5 bit vert, 5 bit horiz)
+    ; Modifies: A, BC, DE, HL
+printpstr:
+    LD      B, (HL)
+    INC     HL
 
     ; printstr(u8 *str, u16 scrpos, u8 sz)
     ; Input: HL - str
@@ -143,10 +321,10 @@ vid_memcpy:
     LD      A, E
     SUB     C
     LD      E, A
-    JR      NC, do_djnz
+    JR      NC, vid_do_djnz
     DEC     D
 
-do_djnz:
+vid_do_djnz:
     DJNZ    vid_memcpy
     RET
 
@@ -200,7 +378,7 @@ printbin_loop:
     RLCA
     LD      C, A
 
-    SBC     A       ; CF=0: A=00, CF=1: A=FF
+    SBC     A, A    ; CF=0: A=00, CF=1: A=FF
     CPL
     INC     A
 
@@ -239,18 +417,21 @@ input_test:
     ; Push framecnt for later use
     LD      A, (FRAMECNT)
     PUSH    AF
-input_test_loop:
-    LD      A, (7C00h)
+input_loop:
+    ;LD      A, (7C00h)
+    LD      A, (P1_LAST)
     LD      C, A
     LD      DE, 02E7h
     CALL    printbin
 
-    LD      A, (7C80h)
+    ;LD      A, (7C80h)
+    LD      A, (P2_LAST)
     LD      C, A
     LD      DE, 02E8h
     CALL    printbin
 
-    LD      A, (7D00h)
+    ;LD      A, (7D00h)
+    LD      A, (COIN_LAST)
     LD      C, A
     LD      DE, 02E9h
     CALL    printbin
@@ -262,20 +443,312 @@ input_test_loop:
 
     LD      HL, FRAMECNT
     POP     AF
-input_test_wait:
-    CP      A, (HL)
-    JR      NZ, input_test_wait
+input_wait:
+    CP      (HL)
+    JR      NZ, input_wait
     LD      A, (HL)
     PUSH    AF
-    JR      input_test_loop
+    JR      input_loop
+
+draw_border:
+    ; Sides
+    LD      DE, -0020h
+    LD      HL, 77BEh
+    LD      A, 7Fh
+    LD      B, 26
+border_left:
+    LD      (HL), A
+    DEC     HL
+    DJNZ    border_left
+
+    LD      L, 09Fh
+    LD      A, 7Ch
+    LD      B, 26
+border_bottom:
+    LD      (HL), A
+    ADD     HL, DE
+    DJNZ    border_bottom
+
+    LD      L, 45h
+    LD      A, 7Dh
+    LD      B, 26
+border_right:
+    LD      (HL), A
+    INC     HL
+    DJNZ    border_right
+
+    LD      HL, 7785h
+    LD      A, 7Eh
+    LD      B, 26
+border_top:
+    LD      (HL), A
+    ADD     HL, DE
+    DJNZ    border_top
+
+    ; Corners
+    LD      A, 8Ch
+    LD      (745Fh), A
+    INC     A
+    LD      (7444h), A
+    INC     A
+    LD      (77BFh), A
+    INC     A
+    LD      (77A4h), A
+    RET
+
+draw_crosshatch:
+    LD      HL, 7440h
+    LD      C, 3Fh
+
+cross_pre_loop:
+    LD      B, 10h
+
+cross_loop:
+    LD      (HL), C
+    INC     HL
+    DEC     C
+    LD      (HL), C
+    INC     HL
+    INC     C
+    DJNZ    cross_loop
+
+    LD      A, 41h
+    CP      C
+    JR      Z, cross_change
+    LD      C, A
+    JR      cross_test
+
+cross_change:
+    DEC     C
+    DEC     C
+
+cross_test:
+    LD      A, L
+    CP      0C0h
+    JR      NZ, cross_pre_loop
+
+    LD      A, H
+    CP      77h
+    JR      NZ, cross_pre_loop
+    RET
+
+clear_screen:
+    LD      HL, 7440h
+clear_loop:
+    LD      A, 10h
+    LD      (HL), A
+    INC     HL
+    LD      A, L
+    CP      0C0h
+    JR      NZ, clear_loop
+
+    LD      A, H
+    CP      77h
+    JR      NZ, clear_loop
+    RET
+
+clear_inside:
+    LD      HL, 7465h
+    LD      B, 26
+inside_loop:
+    LD      A, 10h
+    LD      (HL), A
+    INC     L
+    LD      A, L
+    AND     1Fh
+    CP      1Fh
+    JR      NZ, inside_loop
+
+    LD      A, L
+    ADD     6
+    LD      L, A
+    LD      A, 0
+    ADC     A, H
+    LD      H, A
+    DJNZ    inside_loop
+    RET
+
+    ; HL - Menu ptr
+print_menu:
+    PUSH    HL
+    CALL    clear_inside
+
+    ; Print Title
+    POP     HL
+    PUSH    HL
+    INC     HL
+    INC     HL
+    RST     18h
+    LD      DE, 366h
+    CALL    printpstr
+
+    POP     HL
+    LD      B, (HL) 
+    LD      DE, 0008h
+    ADD     HL, DE
+
+    LD      C, 8>>1
+print_menu_loop:
+    PUSH    HL
+    RST     18h
+
+    LD      A, C
+    INC     C
+    ADD     A, A
+    ADD     20h
+    LD      E, A
+    LD      D, 03h  ; Base offset 320h
+
+    PUSH    BC
+    CALL    printpstr
+
+    POP     BC
+    POP     HL
+    INC     HL
+    INC     HL
+    DJNZ    print_menu_loop
+    RET
+
+redraw_cursor:
+    LD      C, A
+    LD      A, (CURSOR_POS)
+    CP      C
+    RET     Z
+    
+    ; Erase old
+    LD      H, 77h
+    ADD     A, 8>>1
+    ADD     A, A
+    ADD     60h
+    LD      L, A
+    LD      A, 10h
+    LD      (HL), A
+    
+    LD      A, C
+    LD      (CURSOR_POS), A
+
+draw_cursor:
+    ; Draw new
+    LD      H, 77h
+    ADD     A, 8>>1
+    ADD     A, A
+    ADD     60h
+    LD      L, A
+    LD      A, 0FFh
+    LD      (HL), A
+    RET
+
+do_menu:
+    LD      HL, (CURR_MENU)
+    CALL    print_menu
+
+    XOR     A
+    LD      (CURSOR_POS), A
+    CALL    draw_cursor
+
+    LD      HL, (CURR_MENU)
+    LD      B, (HL)
+
+do_menu_loop:
+    LD      A, (EXIT_MENU)
+    OR      A
+    RET     NZ
+    
+    LD      A, (FRAMECNT)
+    PUSH    AF
+
+    LD      A, (COIN_RISING)
+    RRCA
+    RRCA
+    RRCA    ; P1 Start
+
+    RRCA    ; P2 Start
+
+    LD      A, (P1_RISING)
+    RRCA    ; Left
+    RRCA    ; Right
+    RRCA    ; Up
+    JR      C, cursor_up
+    
+    RRCA    ; Down
+    JR      C, cursor_down
+
+    JR      do_menu_join
+
+cursor_up:
+    LD      HL, CURSOR_POS
+    LD      A, (HL)
+    DEC     A
+    CP      0FFh
+    JR      NZ, cursor_join
+    ADD     B
+    JR      cursor_join
+
+cursor_down:
+    LD      HL, CURSOR_POS
+    LD      A, (HL)
+    INC     A
+    CP      B
+    JR      NZ, cursor_join
+    XOR     A
+    JR      cursor_join
+
+cursor_join:
+    CALL    redraw_cursor
+
+do_menu_join:
+    LD      HL, FRAMECNT
+    POP     AF
+do_menu_wait:
+    CP      (HL)
+    JR      Z, do_menu_wait
+    JR      do_menu_loop
+
     
 ; Strings
-S_TESTING: DEFB 24h, 15h, 23h, 24h, 19h, 1Eh, 17h, 2Eh
-S_PORT0:   DEFB 19h, 1Eh, 00h, 2Eh
-S_PORT1:   DEFB 19h, 1Eh, 01h, 2Eh
-S_PORT2:   DEFB 19h, 1Eh, 02h, 2Eh
-S_DSW0:    DEFB 14h, 23h, 27h, 00h, 2Eh
+S_TESTING:  DB 24h, 15h, 23h, 24h, 19h, 1Eh, 17h, 2Eh
+S_PORT0:    DB 19h, 1Eh, 00h, 2Eh
+S_PORT1:    DB 19h, 1Eh, 01h, 2Eh
+S_PORT2:    DB 19h, 1Eh, 02h, 2Eh
+S_DSW0:     DB 14h, 23h, 27h, 00h, 2Eh
 
+; PStrings
+S_SETTINGS: DB 8,  23h, 15h, 24h, 24h, 19h, 1Eh, 17h, 23h
+S_GAMES:    DB 5,  17h, 11h, 1Dh, 15h, 23h
+S_CTRLS:    DB 8,  13h, 1Fh, 1Eh, 24h, 22h, 1Fh, 1Ch, 23h
+S_CROSSH:   DB 10, 13h, 22h, 1Fh, 23h, 23h, 18h, 11h, 24h, 13h, 18h
+S_SAVE:     DB 4,  23h, 11h, 26h, 15h
+S_CANCEL:   DB 6,  13h, 11h, 1Eh, 13h, 15h, 1Ch
 
-;FRAMECNT: equ 6000h
-DEFC FRAMECNT=6000h
+S_GAMELIST: DB 9,  17h, 11h, 1Dh, 15h, 10h, 1Ch, 19h, 23h, 24h
+
+S_DKONG:    DB 16, 14h, 1Fh, 1Eh, 1Bh, 15h, 29h, 10h, 14h, 1Fh, 1Eh, 17h, 10h, 30h, 25h, 23h, 31h
+S_DKONGJR:  DB 20, 14h, 1Fh, 1Eh, 1Bh, 15h, 29h, 10h, 14h, 1Fh, 1Eh, 17h, 10h, 1Ah, 22h, 42h, 10h, 30h, 25h, 23h, 31h
+S_RADARSCP: DB 16, 22h, 11h, 14h, 11h, 22h, 10h, 23h, 13h, 1Fh, 20h, 15h, 10h, 30h, 25h, 23h, 31h
+
+; Menu Structs:
+;struct menu {
+;    u8 qty;
+;    u8 flags;
+;    char *name;
+;    void (*handler)(u8);
+;    struct Menu *parent;
+;    char *ch_name[];
+;}
+
+M_SETTINGS: 
+    DB 5, 0
+    DW S_SETTINGS, 0000h, 0000h
+    DW S_GAMES, S_CTRLS, S_CROSSH, S_SAVE, S_CANCEL
+    ;DEF_MENU  5 0 S_SETTINGS handle_settings 0000h
+    ;DEF_CHILD S_GAMES
+    ;DEF_CHILD S_CTRLS
+    ;DEF_CHILD S_CROSSH
+    ;DEF_CHILD S_SAVE
+    ;DEF_CHILD S_CANCEL
+
+M_GAMES:
+    DB 0 
+    DW S_GAMELIST, 0000h, M_SETTINGS
+
+;M_TEST: DB 0
