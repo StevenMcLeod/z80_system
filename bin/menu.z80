@@ -221,6 +221,17 @@ tc_update:
     LD      (TENCOUNTER), A
     RET
 
+    ; B - Frames to wait
+wait_frames:
+    LD      HL, FRAMECNT
+    LD      A, (HL)
+frame_loop:
+    CP      (HL)
+    JR      Z, frame_loop
+    LD      A, (HL)
+    DJNZ    frame_loop
+    RET
+
 init:
     LD      SP, 6C00h
 
@@ -248,8 +259,6 @@ init:
     LD      (CREF+1), A
     LD      (NMI_MASK), A
 
-    ;CALL    input_test
-    CALL    draw_border
     CALL    do_menu
 
 wait_loop:
@@ -414,9 +423,6 @@ input_test:
     LD      B, 5
     CALL    printstr
 
-    ; Push framecnt for later use
-    LD      A, (FRAMECNT)
-    PUSH    AF
 input_loop:
     ;LD      A, (7C00h)
     LD      A, (P1_LAST)
@@ -441,14 +447,19 @@ input_loop:
     LD      DE, 02EAh
     CALL    printbin
 
-    LD      HL, FRAMECNT
-    POP     AF
-input_wait:
-    CP      (HL)
-    JR      NZ, input_wait
-    LD      A, (HL)
-    PUSH    AF
+    LD      B, 1
+    CALL    wait_frames
+
+    CALL    test_both_starts
+    RET     Z
     JR      input_loop
+
+    ; Sets Z flag if both pressed
+test_both_starts:
+    LD      A, (COIN_LAST)
+    AND     0Ch
+    CP      0Ch
+    RET
 
 draw_border:
     ; Sides
@@ -530,6 +541,10 @@ cross_test:
     LD      A, H
     CP      77h
     JR      NZ, cross_pre_loop
+
+cross_wait_exit:
+    CALL    test_both_starts
+    JR      NZ, cross_wait_exit
     RET
 
 clear_screen:
@@ -572,6 +587,7 @@ inside_loop:
 print_menu:
     PUSH    HL
     CALL    clear_inside
+    CALL    draw_border
 
     ; Print Title
     POP     HL
@@ -646,23 +662,19 @@ do_menu:
     LD      (CURSOR_POS), A
     CALL    draw_cursor
 
-    LD      HL, (CURR_MENU)
-    LD      B, (HL)
-
 do_menu_loop:
     LD      A, (EXIT_MENU)
     OR      A
     RET     NZ
-    
-    LD      A, (FRAMECNT)
-    PUSH    AF
 
     LD      A, (COIN_RISING)
     RRCA
     RRCA
     RRCA    ; P1 Start
+    JR      C, cursor_ok
 
     RRCA    ; P2 Start
+    JR      C, cursor_cancel
 
     LD      A, (P1_RISING)
     RRCA    ; Left
@@ -675,34 +687,122 @@ do_menu_loop:
 
     JR      do_menu_join
 
+cursor_ok:
+    LD      IX, (CURR_MENU)
+    LD      E, (IX+4)
+    LD      D, (IX+5)   ; Get Handler
+    EX      DE, HL
+
+    LD      A, (CURSOR_POS)
+    LD      DE, cursor_accept_join
+    PUSH    DE
+    JP      (HL)
+
+cursor_cancel:
+    LD      IX, (CURR_MENU)
+    LD      E, (IX+6)
+    LD      D, (IX+7)
+    LD      A, D
+    OR      E
+    JR      Z, do_menu_join ; Top level menu
+
+    EX      DE, HL
+    LD      (CURR_MENU), HL
+    
+cursor_accept_join:
+    LD      A, (EXIT_MENU)
+    OR      A
+    RET     NZ
+
+    ; Reset cursor
+    LD      (CURSOR_POS), A
+    LD      B, 1
+    CALL    wait_frames
+    JR      do_menu
+
 cursor_up:
     LD      HL, CURSOR_POS
     LD      A, (HL)
     DEC     A
     CP      0FFh
-    JR      NZ, cursor_join
-    ADD     B
-    JR      cursor_join
+    JR      NZ, cursor_move_join
+
+    LD      HL, (CURR_MENU)
+    ADD     (HL)
+    JR      cursor_move_join
 
 cursor_down:
     LD      HL, CURSOR_POS
     LD      A, (HL)
     INC     A
-    CP      B
-    JR      NZ, cursor_join
-    XOR     A
-    JR      cursor_join
 
-cursor_join:
+    LD      HL, (CURR_MENU)
+    CP      (HL)
+    JR      NZ, cursor_move_join
+    XOR     A
+    JR      cursor_move_join
+
+cursor_move_join:
     CALL    redraw_cursor
 
 do_menu_join:
-    LD      HL, FRAMECNT
-    POP     AF
-do_menu_wait:
-    CP      (HL)
-    JR      Z, do_menu_wait
+    LD      B, 1
+    CALL    wait_frames
     JR      do_menu_loop
+
+    ; HL - Menu Ptr
+load_menu:
+    LD      (CURR_MENU), HL
+    XOR     A
+    LD      (CURSOR_POS), A
+    RET
+
+; MENU HANDLERS
+do_settings:
+    OR      A   ; A = 0
+    JR      Z, setting_game
+
+    DEC     A   ; A = 1
+    JR      Z, setting_ctrl
+
+    DEC     A   ; A = 2
+    JR      Z, setting_ch
+
+    DEC     A   ; A = 3
+    JR      Z, setting_save
+
+setting_cancel:
+setting_game:
+setting_save:
+    LD      HL, GAME_MENU
+    JP      load_menu
+
+setting_ctrl:
+    LD      (CURSOR_POS), A
+    CALL    clear_screen
+    CALL    input_test
+    JP      clear_screen
+
+setting_ch:
+    LD      (CURSOR_POS), A
+    CALL    draw_crosshatch
+    JP      clear_screen
+    
+
+do_games:
+    LD      C, A
+    LD      A, 1
+    LD      (EXIT_MENU), A
+
+    ; Load game in C
+    CALL    clear_screen
+
+
+    LD      HL, S_LOAD
+    LD      DE, 366h
+    LD      B, 10
+    CALL    printstr
+    RET
 
     
 ; Strings
@@ -711,6 +811,7 @@ S_PORT0:    DB 19h, 1Eh, 00h, 2Eh
 S_PORT1:    DB 19h, 1Eh, 01h, 2Eh
 S_PORT2:    DB 19h, 1Eh, 02h, 2Eh
 S_DSW0:     DB 14h, 23h, 27h, 00h, 2Eh
+S_LOAD:     DB 1Ch, 1Fh, 11h, 14h, 19h, 1Eh, 17h, 42h, 42h, 42h
 
 ; PStrings
 S_SETTINGS: DB 8,  23h, 15h, 24h, 24h, 19h, 1Eh, 17h, 23h
@@ -738,7 +839,7 @@ S_RADARSCP: DB 16, 22h, 11h, 14h, 11h, 22h, 10h, 23h, 13h, 1Fh, 20h, 15h, 10h, 3
 
 M_SETTINGS: 
     DB 5, 0
-    DW S_SETTINGS, 0000h, 0000h
+    DW S_SETTINGS, do_settings, 0000h
     DW S_GAMES, S_CTRLS, S_CROSSH, S_SAVE, S_CANCEL
     ;DEF_MENU  5 0 S_SETTINGS handle_settings 0000h
     ;DEF_CHILD S_GAMES
@@ -749,6 +850,6 @@ M_SETTINGS:
 
 M_GAMES:
     DB 0 
-    DW S_GAMELIST, 0000h, M_SETTINGS
+    DW S_GAMELIST, do_games, M_SETTINGS
 
 ;M_TEST: DB 0
