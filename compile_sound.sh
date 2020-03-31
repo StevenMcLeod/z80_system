@@ -23,7 +23,6 @@ $VLOG ../ram.sv
 # T48
 $VCOM ../t48/t48_pack-p.vhd
 $VCOM ../t48/int.vhd
-$VCOM ../t48/int-c.vhd
 $VCOM ../t48/*_pack-p.vhd
 
 $VCOM ../t48/alu.vhd

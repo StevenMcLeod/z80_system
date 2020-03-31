@@ -1,3 +1,7 @@
+`ifdef SIMULATION
+`timescale 1ns/1ns
+`endif
+
 module sound_tb();
 
 // 1 / 6.000 MHz
@@ -80,8 +84,8 @@ dkong_sound dut (
     .rst_n(rst_n),
 
     .vf2(noiseclk),
-    .bg_port(4'b1111),
-    .sfx_port(6'b110111),
+    .bg_port(~4'b0100),
+    .sfx_port(~6'b000000),
     .audio_irq(1'b1),
     .audio_ack(),
 

@@ -25,8 +25,6 @@ module addr_decoder (
     output logic        oport_ena
 );
 
-wire video_wr_decode_disable;
-
 assign memrd = ~rd_n & ~mreq_n;
 assign memwr = ~wr_n & ~mreq_n;
 assign iord  = ~rd_n & ~iorq_n;

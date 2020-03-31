@@ -145,7 +145,12 @@ rom#("roms/sound/s_3i_b.bin", 11) rom_3h (
     .dout(coderom_data)
 );
 `else
-`error "No Xilinx ROM module created yet!"
+sou_3h_rom rom_3h (
+    .clka(soundclk),
+    .ena(1'b1),
+    .addra(addr),
+    .douta(coderom_data)
+);
 `endif
 
 // Data ROM
@@ -157,7 +162,12 @@ rom#("roms/sound/s_3j_b.bin", 11) rom_3f (
     .dout(datarom_data)
 );
 `else
-`error "No Xilinx ROM module created yet!"
+sou_3f_rom rom_3f (
+    .clka(soundclk),
+    .ena(1'b1),
+    .addra(addr),
+    .douta(datarom_data)
+);
 `endif
 
 // LFSR

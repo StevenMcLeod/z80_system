@@ -8,6 +8,7 @@ module dkong_system #(
     parameter IN2_ENA = 0
 )(
     input logic masterclk,
+    input logic soundclk,
     input logic rst_n,
 
     // UART signals
@@ -20,6 +21,13 @@ module dkong_system #(
     output logic[2:0] r_sig,
     output logic[2:0] g_sig,
     output logic[1:0] b_sig,
+
+    // Sound Signals
+    output logic dac_mute,
+    output logic[7:0] dac_out,
+    output logic walk_out,
+    output logic jump_out,
+    output logic crash_out,
     
     // Controls Signals
     input logic p1_r,
@@ -81,7 +89,10 @@ logic cpu_busack,
 // Input Ports
 logic[7:0] in0, in1, in2, dsw0;
 
-// Bitmapped IO signals
+// Output Ports
+logic[3:0] bgm_port;
+logic[5:0] sfx_port;
+
 logic audio_irq,
       grid_ena,
       flip_ena,
@@ -90,8 +101,10 @@ logic audio_irq,
       dma_rdy;
 logic[1:0] cref;
 
+
 // Video Signals
 logic vblk, vblk_d;
+logic[7:0] vtiming;
       
 // Bus Master Structs
 Z80MasterBus cpu_bus,
@@ -383,12 +396,31 @@ dkong_video vid (
     .vram_busy(),
 
     .htiming(pixelclk),
-    .vtiming(),
+    .vtiming(vtiming),
 
     .video_valid(video_valid),
     .r_sig(r_sig),
     .g_sig(g_sig),
     .b_sig(b_sig)
+);
+
+// Sound Core
+dkong_sound sou (
+    .masterclk(masterclk),
+    .soundclk(soundclk),
+    .rst_n(rst_n),
+
+    .vf2(vtiming[1]),
+    .bg_port(bgm_port),
+    .sfx_port(sfx_port),
+    .audio_irq(audio_irq),
+    .audio_ack(audio_ack),
+
+    .dac_mute(dac_mute),
+    .dac_out(dac_out),
+    .walk_out(walk_out),
+    .jump_out(jump_out),
+    .crash_out(crash_out)
 );
 
 // Input Ports
@@ -430,6 +462,13 @@ assign io_bus.mwait = 1'b1;
 always_ff @(posedge masterclk) 
 begin
     if(rst_n == 1'b0) begin
+        // 7C00
+        bgm_port <= 4'b1111;
+
+        // 7D00
+        sfx_port <= 6'b111111;
+
+        // 7D80
         audio_irq <= 1'b1;
         grid_ena <= 1'b1;
         flip_ena <= 1'b1;
@@ -439,6 +478,15 @@ begin
         cref <= 2'b0;
     end else if(io_ena == 1'b1 && slave_shared_master_bus.wrn == 1'b0) begin
         case(slave_shared_master_bus.addr)
+        'h7C00: bgm_port <= ~slave_shared_master_bus.dmaster[3:0];
+        
+        'h7D00: sfx_port[0] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D01: sfx_port[1] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D02: sfx_port[2] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D03: sfx_port[3] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D04: sfx_port[4] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D05: sfx_port[5] <= ~slave_shared_master_bus.dmaster[0];
+
         'h7D80: audio_irq <= ~slave_shared_master_bus.dmaster[0];
         'h7D81: grid_ena <= ~slave_shared_master_bus.dmaster[0];
         'h7D82: flip_ena <= ~slave_shared_master_bus.dmaster[0];

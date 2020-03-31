@@ -6,6 +6,7 @@ module dkong_system_wrapper #(
     parameter IN2_ENA = 0
 ) (
     input wire masterclk,
+    input wire soundclk,
     input wire rst_n,
 
     input wire ser_in,
@@ -16,6 +17,12 @@ module dkong_system_wrapper #(
     output wire[2:0] r_sig,
     output wire[2:0] g_sig,
     output wire[1:0] b_sig,
+    
+    output wire dac_mute,
+    output wire[7:0] dac_out,
+    output wire walk_out,
+    output wire jump_out,
+    output wire crash_out,
 
     input wire p1_r,
     input wire p1_l,
@@ -50,6 +57,7 @@ dkong_system#(
     IN2_ENA
 ) inst (
     .masterclk(masterclk),
+    .soundclk(soundclk),
     .rst_n(rst_n),
 
     .ser_in(ser_in),
@@ -60,6 +68,12 @@ dkong_system#(
     .r_sig(r_sig),
     .g_sig(g_sig),
     .b_sig(b_sig),
+
+    .dac_mute(dac_mute),
+    .dac_out(dac_out),
+    .walk_out(walk_out),
+    .jump_out(jump_out),
+    .crash_out(crash_out),
 
     .p1_r(p1_r),
     .p1_l(p1_l),
