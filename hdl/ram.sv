@@ -18,19 +18,22 @@ logic[DATA_W-1:0] mem[TOTAL_ADDRS];
 
 logic[DATA_W-1:0] outreg;
 
-assign dout = outreg;
+bit did_clear;
 
-`ifdef SIM_CLEAR_RAM
-initial
-begin
-    for(int i = 0; i < TOTAL_ADDRS; ++i) begin
-        mem[i] = '0;
-    end
-end
-`endif
+assign dout = outreg;
 
 always_ff @(posedge clk)
 begin
+`ifdef SIM_CLEAR_RAM
+    if(did_clear == 1'b0) begin
+        for(int i = 0; i < TOTAL_ADDRS; ++i) begin
+            mem[i] = '0;
+        end
+
+        did_clear = 1'b1;
+    end
+`endif
+
     if(ena == 1'b1) begin
         if(rd == 1'b1) begin
             outreg <= mem[addr];
