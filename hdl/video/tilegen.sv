@@ -131,7 +131,7 @@ tile_3n_rom rom_3n (
 // Tile Col Reg
 always_ff @(posedge clk)
 begin
-    if(htiming[3:1] == 3'b000) begin
+    if(htiming[3:1] == 3'b111) begin
         tile_col <= col_out;
     end
 end
@@ -157,7 +157,7 @@ end
 always_ff @(posedge clk)
 begin
     if(htiming[0] == 1'b0) begin
-        if(htiming[3:1] == 3'b000) begin
+        if(htiming[3:1] == 3'b111) begin
             // Load new tile
             for(int i = 0; i < $size(tilerom_buf); ++i) begin
                 tilerom_buf[i] <= tilerom_out[i];
@@ -166,7 +166,8 @@ begin
     end
 end
 
-assign tile_pixel = ~htiming_f[3:1];
+// Pixel is clocked out on 1/2H falling
+assign tile_pixel = ((~(htiming_f + 0)) & 4'b1111) >> 1;
 
 always_comb
 begin

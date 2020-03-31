@@ -25,9 +25,9 @@ $VLOG tilegen.sv
 $VLOG spritegen.sv
 $VLOG dkong_video.sv
 #$VLOG video_tb.sv
-#$VLOG video_tb.sv +define+TESTFILE='"test_data/dkong.game"'
-#$VLOG video_tb.sv +define+TESTFILE='"test_data/dkong.title"'
-$VLOG video_tb.sv +define+TESTFILE='"test_data/allscans.sprite"'
+#$VLOG video_tb.sv +define+TILEFILE='"test_data/dkong.game"'
+$VLOG video_tb.sv +define+TILEFILE='"test_data/dkong.title"'
+#$VLOG video_tb.sv +define+OBJFILE='"test_data/allscans.sprite"'
 
 # Run Sim
 popd

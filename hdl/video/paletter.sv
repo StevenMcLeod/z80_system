@@ -1,6 +1,7 @@
 module paletter (
     input logic clk,
     input logic rst_n,
+    input logic[2:0] phi,
     input logic h_half,
     input logic cmpblk2,
 
@@ -21,13 +22,14 @@ logic do_clear;
 
 assign palette_addr = {cref, col, vid};
 assign do_clear = (cmpblk2 & cmpblk2_d);
-assign video_valid = ~cmpblk2_d;
+//assign video_valid = ~cmpblk2_d;
+assign video_valid = ~cmpblk2;
 
 always_ff @(posedge clk)
 begin
     if(rst_n == 1'b0) begin
         cmpblk2_d <= 1'b1;
-    end else if(h_half == 1'b0) begin   // TODO this should be clock enabled by 4H - 1/2H
+    end else if(phi == 3 && h_half == 1'b0) begin   // TODO this should be clock enabled by 4H - 1/2H
         cmpblk2_d <= cmpblk2;
     end
 end

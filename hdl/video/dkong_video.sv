@@ -125,18 +125,24 @@ assign cpuclk = htiming[1];
 // V[8]: 256V (Counter internal)
 always_ff @(posedge clk)
 begin
+    logic[$bits(htiming)-1:0] next_htiming;
+    next_htiming = (htiming+1);
+
     if(rst_n == 1'b0) begin
         vclk <= 1'b0;
         vtiming <= 9'b0111_1100_0;
     end else if(htiming[9] == 1'b0) begin
         vclk <= 1'b0;
-    end else if(htiming[5] == 1'b1) begin  
+    //end else if(htiming[5] == 1'b1) begin  
+    end else if(phi == 3 && next_htiming[5] == 1'b1) begin
+        // Test on +1 as this is the clk before update
+        
         // Update vclk
-        vclk <= htiming[6] & ~htiming[7];
+        vclk <= next_htiming[6] & ~next_htiming[7];
 
         // Test for rising
         if(vclk == 1'b0 
-        && (htiming[6] & ~htiming[7]) == 1'b1) begin
+        && (next_htiming[6] & ~next_htiming[7]) == 1'b1) begin
             if(vtiming == 9'b1111_1111_1) begin
                 // Reset vtiming
                 vtiming <= 9'b0111_1100_0;
@@ -167,7 +173,7 @@ begin
     // Clked by ~phi_34 -> rising on phi == 4
     if(rst_n == 1'b0) begin
         cmpblk2 <= 1'b1;
-    end else if(phi == 3 && htiming[3:0] == 4'b0000) begin
+    end else if(phi == 3 && htiming[3:0] == 4'b1111) begin
         cmpblk2 <= cmpblk;
     end
 end
@@ -256,6 +262,7 @@ assign attrib_cen = ~|(htiming[3:0]);
 paletter pal (
     .clk(clk),
     .rst_n(rst_n),
+    .phi(phi),
     .h_half(htiming[0]),
     .cmpblk2(cmpblk2),
 
