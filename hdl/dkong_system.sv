@@ -1,3 +1,4 @@
+`define ARM_LOADER
 `include "Z80Bus.vh"
 
 module dkong_system #(
@@ -46,6 +47,14 @@ module dkong_system #(
     input logic p2_sw,
     input logic coin_sw,
 
+    // Loader Signals
+    input logic clkprogrom,
+    input logic enprogrom,
+    input logic weprogrom,
+    input logic[13:0] addrprogrom,
+    input logic[7:0] dinprogrom,
+    output logic[7:0] doutprogrom,
+
     // Debug signals
     input logic debug_wait,
     output logic[7:0] debug_ahi,
@@ -92,6 +101,7 @@ logic[7:0] in0, in1, in2, dsw0;
 // Output Ports
 logic[3:0] bgm_port;
 logic[5:0] sfx_port;
+logic audio_ack;
 
 logic audio_irq,
       grid_ena,
@@ -117,7 +127,7 @@ Z80SlaveBus  rom_bus,                   // 0000h - 3FFFh
              obj_bus,                   // 7000h - 73FFh
              tile_bus,                  // 7400h - 77FFh
              dma_slave_bus,             // 7800h - 780Fh
-             io_bus,                    // 7C00h - 7D87h
+             io_bus,                    // 7C00h - 7DFFh
              oport_bus;                 // 7F00h - 7F00h
             
 Z80MasterBus slave_shared_master_bus;
@@ -131,8 +141,6 @@ logic rom_ena,
       obj_ena,
       tile_ena,
       dma_ena,
-//      bgm_ena,
-//      sfx_ena,
       io_ena,
       oport_ena;
       
@@ -302,8 +310,6 @@ addr_decoder ad (
     .obj_ena(obj_ena),
     .tile_ena(tile_ena),
     .dma_ena(dma_ena),
-    //.bgm_ena(bgm_ena),
-    //.sfx_ena(sfx_ena),
     .io_ena(io_ena),
     .oport_ena(oport_ena)
 );
@@ -315,8 +321,6 @@ ena_to_muxsel (
     .ins({
         oport_ena,
         io_ena,
-//        sfx_ena,
-//        bgm_ena,
         dma_ena,
         tile_ena,
         obj_ena,
@@ -355,6 +359,8 @@ sm (
 // ROM Core
 `ifdef SIMULATION
 z80rom#("roms/prog/prog_rom.bin", 14, 8, 1)
+`elsif ARM_LOADER
+program_rom_wrapper
 `else
 program_rom_wrapper
 `endif
@@ -363,6 +369,16 @@ cpu_rom (
     .ena(rom_ena),
     .ibus(slave_shared_master_bus),
     .obus(rom_bus)
+
+`ifdef ARM_LOADER
+    ,
+    .clkext(clkprogrom),
+    .enaext(enprogrom),
+    .weext(weprogrom),
+    .addrext(addrprogrom),
+    .dinext(dinprogrom),
+    .doutext(doutprogrom)
+`endif
 );
 
 // RAM Core
@@ -437,7 +453,7 @@ begin
         if(IN1_ENA)
             in1 <= {3'b000, p2_b1, p2_d, p2_u, p2_l, p2_r};
         if(IN2_ENA)
-            in2 <= {coin_sw, 3'b000, p2_sw, p1_sw, 2'b00};
+            in2 <= {coin_sw, ~audio_ack, 2'b00, p2_sw, p1_sw, 2'b00};
     end
 
     if(io_ena == 1'b1 && slave_shared_master_bus.rdn == 1'b0) begin

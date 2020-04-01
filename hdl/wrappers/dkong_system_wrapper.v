@@ -40,6 +40,13 @@ module dkong_system_wrapper #(
     input wire p2_sw,
     input wire coin_sw,
 
+    input wire clkprogrom,
+    input wire enprogrom,
+    input wire weprogrom,
+    input wire[13:0] addrprogrom,
+    input wire[7:0] dinprogrom,
+    output wire[7:0] doutprogrom,
+
     input wire debug_wait,
     output wire[7:0] debug_ahi,
     output wire[7:0] debug_alo,
@@ -90,6 +97,13 @@ dkong_system#(
     .p1_sw(p1_sw),
     .p2_sw(p2_sw),
     .coin_sw(coin_sw),
+
+    .clkprogrom(clkprogrom),
+    .enprogrom(enprogrom),
+    .weprogrom(weprogrom),
+    .addrprogrom(addrprogrom),
+    .dinprogrom(dinprogrom),
+    .doutprogrom(doutprogrom),
 
     .debug_wait(debug_wait),
     .debug_ahi(debug_ahi),
