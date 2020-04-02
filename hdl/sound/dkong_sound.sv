@@ -5,25 +5,44 @@
 // 7D03: Credit
 // 7D04: Fall
 // 7D05: Points
+// 7D80: Death
+
+// DJR Only:
+// 7C81: Points
+// 7D00: Walk/Climb (analog)
+// 7D01: Jump (analog)
+// 7D02: Crash (analog)
+// 7D03: Key Unlock
+// 7D04: Smash
+// 7D05: Credit
+// 7D06: Jr. Hit
+// 7D07: Walk/Climb Mux
+// 7D80: Death
+
 
 module dkong_sound (
     input logic masterclk,
     input logic soundclk,
     input logic rst_n,
 
+    // Loader configuration
+    input logic[1:0] game_type,
+
     // CPU IO ports
     input logic vf2,
-    input logic[3:0] bg_port,
-    input logic[5:0] sfx_port,
-    input logic audio_irq,
-    output logic audio_ack,
+    input logic[4:0] bg_port,   // 7C00
+    input logic[7:0] sfx_port,  // 7D0x
+    input logic subsfx_port,    // 7C8x
+    input logic audio_irq,      // 7D80
+    output logic audio_ack,     // IN2
 
     // Sound output ports
     output logic dac_mute,
     output logic[7:0] dac_out,
     output logic walk_out,      // 7D00
     output logic jump_out,      // 7D01
-    output logic crash_out      // 7D02
+    output logic crash_out,     // 7D02
+    output logic walk_climb_sel // 7D07
 );
 
 logic xtal3;
@@ -50,15 +69,14 @@ logic vf2_d;
 logic[2:0] noise_cntr;
 logic noise_out;
 
-assign pb_in = {2'b11, sfx_port[3], 5'b11111};
+// Game independent assigns
 assign dac_mute = pb_out[7];
-assign data_rd_loc = pb_out[6];
-assign audio_ack = ~pb_out[4];
 assign addr[11:8] = pb_out[3:0];
 
 assign walk_out = sfx_port[0];
 assign jump_out = sfx_port[1];
 assign crash_out = sfx_port[2];
+assign walk_climb_sel = sfx_port[7];
 
 // I8035
 t48_core cpu (
@@ -110,7 +128,21 @@ begin
     end
 end
 
-// Read driver
+// Game specific differences
+always_comb
+begin
+    if(game_type != 2'b11) begin    // != DJR
+        data_rd_loc <= pb_out[6];
+        pb_in <= {2'b11, sfx_port[3], 5'b11111};
+        audio_ack <= ~pb_out[4];
+    end else begin
+        data_rd_loc <= 1'b1;
+        pb_in <= {1'b1, subsfx_port, sfx_port[3], sfx_port[6], 4'b1111};
+        audio_ack <= 1'b1;
+    end
+end
+
+// Read Driver
 always_comb
 begin
     din <= 8'h00;
@@ -145,10 +177,10 @@ rom#("roms/sound/s_3i_b.bin", 11) rom_3h (
     .dout(coderom_data)
 );
 `else
-sou_3h_rom rom_3h (
+sou_3h_banked_rom rom_3h (
     .clka(soundclk),
     .ena(1'b1),
-    .addra(addr),
+    .addra({game_type, addr}),
     .douta(coderom_data)
 );
 `endif
@@ -162,10 +194,10 @@ rom#("roms/sound/s_3j_b.bin", 11) rom_3f (
     .dout(datarom_data)
 );
 `else
-sou_3f_rom rom_3f (
+sou_3f_banked_rom rom_3f (
     .clka(soundclk),
     .ena(1'b1),
-    .addra(addr),
+    .addra({game_type, addr}),
     .douta(datarom_data)
 );
 `endif
@@ -174,6 +206,7 @@ sou_3f_rom rom_3f (
 assign lfsr_out = lfsr[23] ^ lfsr[10];
 assign noise_out = noise_cntr[2];
 
+// TODO: LFSR clk for DJR is ~710Hz (mame/audio/dkong.cpp, line 1015)
 always_ff @(posedge masterclk)
 begin
     if(rst_n == 1'b0) begin

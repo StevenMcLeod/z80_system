@@ -4,6 +4,8 @@ module dkong_video (
     input logic clk,
     input logic rst_n,
 
+    input logic[1:0] game_type,
+
     // Z80 Interface
     input Z80MasterBus ibus,
     output Z80SlaveBus tile_bus,
@@ -14,6 +16,7 @@ module dkong_video (
     input logic obj_ena,
 
     // VidCtrl Signals
+    input logic vrom_ena,   // 7C80h
     input logic grid_ena,   // 7D81h
     input logic flip_ena,   // 7D82h
     input logic psl2_ena,   // 7D83h
@@ -209,11 +212,14 @@ end
 tilegen tile (
     .clk(clk),
     .rst_n(rst_n),
+
+    .game_type(game_type),
     
     .vtiming_f(vtiming_f),
     .htiming(htiming),
     .cmpblk(cmpblk),
     
+    .vrom_ena(vrom_ena),
     .flip_ena(flip_ena),
 
     .rdn(ibus.rdn),
@@ -234,6 +240,8 @@ tilegen tile (
 spritegen sprite (
     .clk(clk),
     .rst_n(rst_n),
+
+    .game_type(game_type),
     
     .phi(phi),
     .vtiming_f(vtiming_f),
@@ -265,6 +273,8 @@ paletter pal (
     .phi(phi),
     .h_half(htiming[0]),
     .cmpblk2(cmpblk2),
+
+    .game_type(game_type),
 
     .col(mux_col),
     .vid(mux_vid),

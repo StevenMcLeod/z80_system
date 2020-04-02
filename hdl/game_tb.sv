@@ -2,7 +2,8 @@ module game_tb();
 
 // 1 / 61.44 MHz
 time clkspeed = 16276ps;
-logic clk, rst_n;
+time soundspeed = 166666ps;
+logic clk, soundclk, rst_n;
 logic[2:0] r_sig;
 logic[2:0] g_sig;
 logic[1:0] b_sig;
@@ -16,6 +17,15 @@ begin
     
     forever begin
         #(clkspeed/2) clk <= ~clk;
+    end
+end
+
+initial
+begin
+    soundclk <= 1'b0;
+
+    forever begin
+        #(soundspeed/2) soundclk <= ~soundclk;
     end
 end
 
@@ -44,19 +54,41 @@ initial begin
     end
 end
 
-dkong_system#(1)
+dkong_system#(1, 0, 1, 0, 0, 0)
 dkong (
     .masterclk(clk),
+    .soundclk(soundclk),
     .rst_n(rst_n),
-
-    .ser_in(1'b1),
-    .ser_out(),
 
     .pixelclk(pixelclk),
     .video_valid(do_write),
     .r_sig(r_sig),
     .g_sig(g_sig),
-    .b_sig(b_sig)
+    .b_sig(b_sig),
+
+    .dac_mute(),
+    .dac_out(),
+    .walk_out(),
+    .jump_out(),
+    .crash_out(),
+    .walk_climb_sel(),
+
+    .p1_r(1'b0),
+    .p1_l(1'b0),
+    .p1_u(1'b0),
+    .p1_d(1'b0),
+    .p1_b1(1'b0),
+    .p2_r(1'b0),
+    .p2_l(1'b0),
+    .p2_u(1'b0),
+    .p2_d(1'b0),
+    .p2_b1(1'b0),
+
+    .p1_sw(1'b0),
+    .p2_sw(1'b0),
+    .coin_sw(1'b0),
+
+    .debug_banksel(2'b11)
 );
 
 endmodule

@@ -8,6 +8,8 @@ module spritegen (
     input logic[9:0] htiming,
     input logic cmpblk2,
 
+    input logic[1:0] game_type, 
+
     // Vidctrl Signals
     input logic flip_ena,
     input logic psl2_ena,
@@ -143,10 +145,10 @@ rom#("roms/sprite/l_4m_b.bin", 11) rom_7c (
     .dout(objrom_out[0][15:8])
 );
 `else
-obj_7c_rom rom_7c (
+obj_7c_banked_rom rom_7c (
     .clka(clk),
     .ena(htiming[9]),
-    .addra(objrom_index),
+    .addra({game_type, objrom_index}),
     .douta(objrom_out[0][15:8])
 );
 `endif
@@ -159,10 +161,10 @@ rom#("roms/sprite/l_4n_b.bin", 11) rom_7d (
     .dout(objrom_out[0][7:0])
 );
 `else
-obj_7d_rom rom_7d (
+obj_7d_banked_rom rom_7d (
     .clka(clk),
     .ena(htiming[9]),
-    .addra(objrom_index),
+    .addra({game_type, objrom_index}),
     .douta(objrom_out[0][7:0])
 );
 `endif
@@ -176,10 +178,10 @@ rom#("roms/sprite/l_4r_b.bin", 11) rom_7e (
     .dout(objrom_out[1][15:8])
 );
 `else
-obj_7e_rom rom_7e (
+obj_7e_banked_rom rom_7e (
     .clka(clk),
     .ena(htiming[9]),
-    .addra(objrom_index),
+    .addra({game_type, objrom_index}),
     .douta(objrom_out[1][15:8])
 );
 `endif
@@ -192,10 +194,10 @@ rom#("roms/sprite/l_4s_b.bin", 11) rom_7f (
     .dout(objrom_out[1][7:0])
 );
 `else
-obj_7f_rom rom_7f (
+obj_7f_banked_rom rom_7f (
     .clka(clk),
     .ena(htiming[9]),
-    .addra(objrom_index),
+    .addra({game_type, objrom_index}),
     .douta(objrom_out[1][7:0])
 );
 `endif

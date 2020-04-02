@@ -1,9 +1,12 @@
 module paletter (
     input logic clk,
     input logic rst_n,
+
     input logic[2:0] phi,
     input logic h_half,
     input logic cmpblk2,
+
+    input logic[1:0] game_type,
 
     input logic[3:0] col,
     input logic[1:0] vid,
@@ -59,10 +62,10 @@ rom#("roms/palette/c-2k.bpr", 8, 4) prom_2e (
     .dout(palette_out[3:0])
 );
 `else
-palette_2e_prom prom_2e (
+palette_2e_banked_prom prom_2e (
     .clka(clk),
     .ena(1'b1),
-    .addra(palette_addr),
+    .addra({game_type, palette_addr}),
     .douta(palette_out[3:0])
 );
 `endif
@@ -78,10 +81,10 @@ rom#("roms/palette/c-2j.bpr", 8, 4) prom_2f (
     .dout(palette_out[7:4])
 );
 `else
-palette_2f_prom prom_2f (
+palette_2f_banked_prom prom_2f (
     .clka(clk),
     .ena(1'b1),
-    .addra(palette_addr),
+    .addra({game_type, palette_addr}),
     .douta(palette_out[7:4])
 );
 `endif

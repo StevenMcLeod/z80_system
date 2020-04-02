@@ -1,6 +1,7 @@
 module dkong_system_wrapper #(
     parameter CLKS_PER_BIT = 1,
     parameter DEBUG_WAIT_ENA = 0,
+    parameter DEBUG_BANKSEL_ENA = 0,
     parameter IN0_ENA = 0,
     parameter IN1_ENA = 0,
     parameter IN2_ENA = 0
@@ -9,8 +10,8 @@ module dkong_system_wrapper #(
     input wire soundclk,
     input wire rst_n,
 
-    input wire ser_in,
-    output wire ser_out,
+    //input wire ser_in,
+    //output wire ser_out,
 
     output wire pixelclk,
     output wire video_valid,
@@ -41,6 +42,7 @@ module dkong_system_wrapper #(
     input wire coin_sw,
 
     input wire debug_wait,
+    input wire[1:0] debug_banksel,
     output wire[7:0] debug_ahi,
     output wire[7:0] debug_alo,
     output wire[7:0] debug_dmaster,
@@ -52,6 +54,7 @@ module dkong_system_wrapper #(
 dkong_system#(
     CLKS_PER_BIT,
     DEBUG_WAIT_ENA,
+    DEBUG_BANKSEL_ENA,
     IN0_ENA,
     IN1_ENA,
     IN2_ENA
@@ -60,8 +63,8 @@ dkong_system#(
     .soundclk(soundclk),
     .rst_n(rst_n),
 
-    .ser_in(ser_in),
-    .ser_out(ser_out),
+//    .ser_in(ser_in),
+//    .ser_out(ser_out),
 
     .pixelclk(pixelclk),
     .video_valid(video_valid),
@@ -92,6 +95,7 @@ dkong_system#(
     .coin_sw(coin_sw),
 
     .debug_wait(debug_wait),
+    .debug_banksel(debug_banksel),
     .debug_ahi(debug_ahi),
     .debug_alo(debug_alo),
     .debug_dmaster(debug_dmaster),

@@ -1,8 +1,10 @@
 `include "Z80Bus.vh"
+`define BANKED
 
 module dkong_system #(
     parameter CLKS_PER_BIT = 1,
     parameter DEBUG_WAIT_ENA = 0,
+    parameter DEBUG_BANKSEL_ENA = 0,
     parameter IN0_ENA = 0,
     parameter IN1_ENA = 0,
     parameter IN2_ENA = 0
@@ -12,8 +14,8 @@ module dkong_system #(
     input logic rst_n,
 
     // UART signals
-    input logic ser_in,
-    output logic ser_out,
+    //input logic ser_in,
+    //output logic ser_out,
 
     // Video Signals
     output logic pixelclk,
@@ -28,6 +30,7 @@ module dkong_system #(
     output logic walk_out,
     output logic jump_out,
     output logic crash_out,
+    output logic walk_climb_sel,
     
     // Controls Signals
     input logic p1_r,
@@ -48,6 +51,7 @@ module dkong_system #(
 
     // Debug signals
     input logic debug_wait,
+    input logic[1:0] debug_banksel,
     output logic[7:0] debug_ahi,
     output logic[7:0] debug_alo,
     output logic[7:0] debug_dmaster,
@@ -59,6 +63,9 @@ module dkong_system #(
 
 localparam MASTER_QTY = 2;
 localparam SLAVE_QTY = 7;
+
+localparam ROM_BANKS = 4;
+localparam ROM_BANK_W = $clog2(ROM_BANKS-1);
 
 /*
  *  SIGNALS
@@ -88,10 +95,14 @@ logic cpu_busack,
 
 // Input Ports
 logic[7:0] in0, in1, in2, dsw0;
+logic audio_ack;
 
 // Output Ports
-logic[3:0] bgm_port;
-logic[5:0] sfx_port;
+logic[4:0] bgm_port;
+logic[7:0] sfx_port;
+logic subsfx_port;
+
+logic vrom_ena;
 
 logic audio_irq,
       grid_ena,
@@ -100,6 +111,8 @@ logic audio_irq,
       nmi_mask,
       dma_rdy;
 logic[1:0] cref;
+
+logic[ROM_BANK_W-1:0] rom_bank_sel;
 
 
 // Video Signals
@@ -131,8 +144,6 @@ logic rom_ena,
       obj_ena,
       tile_ena,
       dma_ena,
-//      bgm_ena,
-//      sfx_ena,
       io_ena,
       oport_ena;
       
@@ -142,7 +153,7 @@ assign debug_alo = slave_shared_master_bus.addr[7:0];
 assign debug_dmaster = slave_shared_master_bus.dmaster;
 assign debug_dslave = master_shared_slave_bus.dslave;
 assign debug_cpu_sig = {~cpu_nmi, ~cpu_busrq, ~master_shared_slave_bus.mwait, ~cpu_m1, ~cpu_iorq, ~cpu_mreq, ~cpu_wr, ~cpu_rd};
-assign debug_enables = {oport_ena, io_ena, 1'b0, dma_ena, tile_ena, obj_ena, ram_ena, rom_ena};
+assign debug_enables = {oport_ena, io_ena && ~slave_shared_master_bus.wrn, io_ena && ~slave_shared_master_bus.rdn, dma_ena, tile_ena, obj_ena, ram_ena, rom_ena};
 assign debug_misc = {
     ~rst_n,
     6'b000000,
@@ -159,7 +170,6 @@ tv80s mycpu (
     .cen(1'b1),
     
     .wait_n(cpu_wait),
-    //.wait_n(1'b0),
     .int_n(1'b1),
     .nmi_n(cpu_nmi),
     .busrq_n(cpu_busrq),
@@ -281,7 +291,6 @@ fakedma dmac (
 
 
 // Address decoder
-// TODO this needs to be controlled by slave_shared_master_bus
 addr_decoder ad (
     .addr(slave_shared_master_bus.addr),
     .rd_n(slave_shared_master_bus.rdn),
@@ -302,8 +311,6 @@ addr_decoder ad (
     .obj_ena(obj_ena),
     .tile_ena(tile_ena),
     .dma_ena(dma_ena),
-    //.bgm_ena(bgm_ena),
-    //.sfx_ena(sfx_ena),
     .io_ena(io_ena),
     .oport_ena(oport_ena)
 );
@@ -315,8 +322,6 @@ ena_to_muxsel (
     .ins({
         oport_ena,
         io_ena,
-//        sfx_ena,
-//        bgm_ena,
         dma_ena,
         tile_ena,
         obj_ena,
@@ -353,17 +358,33 @@ sm (
 );
 
 // ROM Core
-`ifdef SIMULATION
-z80rom#("roms/prog/prog_rom.bin", 14, 8, 1)
+`ifdef BANKED
+    `ifdef SIMULATION
+z80rom_banked#("roms/banked/prog_rom.bin", ROM_BANK_W, 15, 8)
+    `else
+program_rom_wrapper_banked
+    `endif
+cpu_rom (
+    .clk(masterclk),
+    .ena(rom_ena),
+    .banksel(rom_bank_sel),
+    .ibus(slave_shared_master_bus),
+    .obus(rom_bus)
+);
+
 `else
+    `ifdef SIMULATION
+z80rom#("roms/prog/prog_rom.bin", 14, 8, 1)
+    `else
 program_rom_wrapper
-`endif
+    `endif
 cpu_rom (
     .clk(masterclk),
     .ena(rom_ena),
     .ibus(slave_shared_master_bus),
     .obus(rom_bus)
 );
+`endif
 
 // RAM Core
 z80ram#(12)
@@ -378,6 +399,8 @@ cpu_ram (
 dkong_video vid (
     .clk(masterclk),
     .rst_n(rst_n),
+    
+    .game_type(rom_bank_sel),
 
     .ibus(slave_shared_master_bus),
     .tile_bus(tile_bus),
@@ -386,6 +409,7 @@ dkong_video vid (
     .tile_ena(tile_ena),
     .obj_ena(obj_ena),
 
+    .vrom_ena(vrom_ena),
     .grid_ena(grid_ena),
     .flip_ena(flip_ena),
     .psl2_ena(psl2_ena),
@@ -410,9 +434,12 @@ dkong_sound sou (
     .soundclk(soundclk),
     .rst_n(rst_n),
 
+    .game_type(rom_bank_sel),
+
     .vf2(vtiming[1]),
     .bg_port(bgm_port),
     .sfx_port(sfx_port),
+    .subsfx_port(subsfx_port),
     .audio_irq(audio_irq),
     .audio_ack(audio_ack),
 
@@ -420,7 +447,8 @@ dkong_sound sou (
     .dac_out(dac_out),
     .walk_out(walk_out),
     .jump_out(jump_out),
-    .crash_out(crash_out)
+    .crash_out(crash_out),
+    .walk_climb_sel(walk_climb_sel)
 );
 
 // Input Ports
@@ -437,7 +465,7 @@ begin
         if(IN1_ENA)
             in1 <= {3'b000, p2_b1, p2_d, p2_u, p2_l, p2_r};
         if(IN2_ENA)
-            in2 <= {coin_sw, 3'b000, p2_sw, p1_sw, 2'b00};
+            in2 <= {coin_sw, audio_ack, 2'b00, p2_sw, p1_sw, 2'b00};
     end
 
     if(io_ena == 1'b1 && slave_shared_master_bus.rdn == 1'b0) begin
@@ -463,10 +491,18 @@ always_ff @(posedge masterclk)
 begin
     if(rst_n == 1'b0) begin
         // 7C00
-        bgm_port <= 4'b1111;
+        if(rom_bank_sel == 3) begin
+            bgm_port <= 5'b00000; 
+        end else begin
+            bgm_port <= 5'b01111;
+        end
+
+        // 7C80
+        vrom_ena <= 1'b1;
+        subsfx_port <= 1'b1;
 
         // 7D00
-        sfx_port <= 6'b111111;
+        sfx_port <= 8'b11111111;
 
         // 7D80
         audio_irq <= 1'b1;
@@ -478,7 +514,16 @@ begin
         cref <= 2'b0;
     end else if(io_ena == 1'b1 && slave_shared_master_bus.wrn == 1'b0) begin
         case(slave_shared_master_bus.addr)
-        'h7C00: bgm_port <= ~slave_shared_master_bus.dmaster[3:0];
+        'h7C00: begin
+            if(rom_bank_sel == 3) begin
+                bgm_port <= slave_shared_master_bus.dmaster[4:0];
+            end else begin
+                bgm_port <= {1'b0, ~slave_shared_master_bus.dmaster[3:0]};
+            end
+        end
+
+        'h7C80: vrom_ena <= slave_shared_master_bus.dmaster[0];
+        'h7C81: subsfx_port <= ~slave_shared_master_bus.dmaster[0];
         
         'h7D00: sfx_port[0] <= ~slave_shared_master_bus.dmaster[0];
         'h7D01: sfx_port[1] <= ~slave_shared_master_bus.dmaster[0];
@@ -486,6 +531,8 @@ begin
         'h7D03: sfx_port[3] <= ~slave_shared_master_bus.dmaster[0];
         'h7D04: sfx_port[4] <= ~slave_shared_master_bus.dmaster[0];
         'h7D05: sfx_port[5] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D06: sfx_port[6] <= ~slave_shared_master_bus.dmaster[0];
+        'h7D07: sfx_port[7] <= ~slave_shared_master_bus.dmaster[0];
 
         'h7D80: audio_irq <= ~slave_shared_master_bus.dmaster[0];
         'h7D81: grid_ena <= ~slave_shared_master_bus.dmaster[0];
@@ -499,6 +546,31 @@ begin
     end
 end
 
+assign oport_bus.mwait = 1'b1;
+
+// Bank Selector
+always_ff @(posedge masterclk)
+begin
+    if(rst_n == 1'b0) begin
+        rom_bank_sel <= 0;
+    end
+
+    if(DEBUG_BANKSEL_ENA) begin
+        rom_bank_sel <= debug_banksel;
+    end else begin
+        if(oport_ena == 1'b1) begin
+            if(slave_shared_master_bus.rdn == 1'b0) begin
+                oport_bus.dslave <= rom_bank_sel;
+            end 
+            
+            if(slave_shared_master_bus.wrn == 1'b0) begin
+                rom_bank_sel <= slave_shared_master_bus.dmaster;
+            end
+        end
+    end
+end
+
+
 // OPort core
 //oport op (
 //    .clk(masterclk),
@@ -507,16 +579,16 @@ end
 //    .obus(oport_bus)
 //);
 
-z80_uart#(CLKS_PER_BIT)
-uart (
-    .clk(masterclk),
-    .rst_n(rst_n),
-    .ena(oport_ena),
-    .ibus(slave_shared_master_bus),
-    .obus(oport_bus),
-
-    .rx(ser_in),
-    .tx(ser_out)
-);
+//z80_uart#(CLKS_PER_BIT)
+//uart (
+//    .clk(masterclk),
+//    .rst_n(rst_n),
+//    .ena(oport_ena),
+//    .ibus(slave_shared_master_bus),
+//    .obus(oport_bus),
+//
+//    .rx(ser_in),
+//    .tx(ser_out)
+//);
 
 endmodule : dkong_system

@@ -31,7 +31,7 @@ assign iord  = ~rd_n & ~iorq_n;
 assign iowr  = ~wr_n & ~iorq_n;
 assign inta  = ~m1_n & ~iorq_n;
 
-assign rom_ena = (addr >= 16'h0000 && addr <= 16'h3FFF) && ~disable_decode;
+assign rom_ena = (addr >= 16'h0000 && addr <= 16'h5FFF) && ~disable_decode;
 assign ram_ena = (addr >= 16'h6000 && addr <= 16'h6BFF) && ~disable_decode;
 assign obj_ena = (addr >= 16'h7000 && addr <= 16'h73FF) && ~disable_decode;
 assign tile_ena = (addr >= 16'h7400 && addr <= 16'h77FF) && ~disable_decode;

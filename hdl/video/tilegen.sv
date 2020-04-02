@@ -7,7 +7,10 @@ module tilegen (
     input logic[9:0] htiming,
     input logic cmpblk,
 
+    input logic[1:0] game_type,
+
     // Vidctrl Signals
+    input logic vrom_ena,
     input logic flip_ena,
 
     // CPU Signals
@@ -86,10 +89,10 @@ rom#("roms/tile/v-5e.bpr", 8, 4) prom_2n (
     .dout(col_out)
 );
 `else
-tile_2n_prom prom_2n (
+tile_2n_banked_prom prom_2n (
     .clka(clk),
     .ena(1'b1),
-    .addra({tileram_addr[9:7], tileram_addr[4:0]}),
+    .addra({game_type, tileram_addr[9:7], tileram_addr[4:0]}),
     .douta(col_out)
 );
 `endif
@@ -103,10 +106,10 @@ rom#("roms/tile/v_3pt.bin", 11) rom_3p (
     .dout(tilerom_out[1])
 );
 `else
-tile_3p_rom rom_3p (
+tile_3p_banked_rom rom_3p (
     .clka(clk),
     .ena(~htiming[9]),
-    .addra(tilerom_index),
+    .addra({game_type, vrom_ena, tilerom_index}),
     .douta(tilerom_out[1])
 );
 `endif
@@ -120,10 +123,10 @@ rom#("roms/tile/v_5h_b.bin", 11) rom_3n (
     .dout(tilerom_out[0])
 );
 `else
-tile_3n_rom rom_3n (
+tile_3n_banked_rom rom_3n (
     .clka(clk),
     .ena(~htiming[9]),
-    .addra(tilerom_index),
+    .addra({game_type, vrom_ena, tilerom_index}),
     .douta(tilerom_out[0])
 );
 `endif
