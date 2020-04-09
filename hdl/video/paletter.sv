@@ -25,8 +25,8 @@ logic do_clear;
 
 assign palette_addr = {cref, col, vid};
 assign do_clear = (cmpblk2 & cmpblk2_d);
-//assign video_valid = ~cmpblk2_d;
-assign video_valid = ~cmpblk2;
+assign video_valid = ~cmpblk2_d;
+//assign video_valid = ~cmpblk2;
 
 always_ff @(posedge clk)
 begin

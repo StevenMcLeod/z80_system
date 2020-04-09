@@ -178,6 +178,8 @@ dkong_video myvid (
     .clk(clk),
     .rst_n(rst_n),
 
+    .game_type(2'b00),
+
     .ibus(master),
     .tile_bus(),
     .obj_bus(),
@@ -185,6 +187,7 @@ dkong_video myvid (
     .tile_ena(tile_ena),
     .obj_ena(obj_ena),
 
+    .vrom_ena(1'b0),
     .grid_ena(1'b0),
     .flip_ena(1'b1),
     .psl2_ena(1'b0),

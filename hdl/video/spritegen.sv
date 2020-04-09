@@ -27,8 +27,8 @@ module spritegen (
 );
 
 // Sprite Add Constant
-localparam SPRITE_ADD_F0 = 8'b1111_1000;    // -8
-localparam SPRITE_ADD_F1 = 8'b1111_1010;    // -6
+localparam SPRITE_ADD_F0 = 8'b1111_1010;    // -6
+localparam SPRITE_ADD_F1 = 8'b1111_1000;    // -8
 
 // Timing
 logic[7:0] vtiming_fc;

@@ -282,14 +282,14 @@ init_game_names:
     LD      (HL), S_DKONG >> 8
     INC     HL
 
-    LD      (HL), S_DKONGJR & 00FFh
-    INC     HL
-    LD      (HL), S_DKONGJR >> 8
-    INC     HL
-
     LD      (HL), S_RADARSCP & 00FFh
     INC     HL
     LD      (HL), S_RADARSCP >> 8
+    INC     HL
+
+    LD      (HL), S_DKONGJR & 00FFh
+    INC     HL
+    LD      (HL), S_DKONGJR >> 8
     INC     HL
 
     LD      HL, 6080h
@@ -790,20 +790,32 @@ setting_ch:
     
 
 do_games:
-    LD      C, A
+    INC     A       ; Games start at offset 1
+    PUSH    AF
     LD      A, 1
     LD      (EXIT_MENU), A
 
     ; Load game in C
     CALL    clear_screen
 
-
     LD      HL, S_LOAD
     LD      DE, 366h
     LD      B, 10
     CALL    printstr
-    RET
 
+    LD      HL, bank_load
+    LD      DE, 6000h
+    LD      BC, bank_load_end - bank_load
+    LDIR
+    POP     AF
+    JP      6000h
+
+; Program Bank Switcher, copied to ram
+bank_load:
+    LD      HL, 7F00h
+    LD      (HL), A
+    RST     00h
+bank_load_end:
     
 ; Strings
 S_TESTING:  DB 24h, 15h, 23h, 24h, 19h, 1Eh, 17h, 2Eh
@@ -823,8 +835,8 @@ S_CANCEL:   DB 6,  13h, 11h, 1Eh, 13h, 15h, 1Ch
 
 S_GAMELIST: DB 9,  17h, 11h, 1Dh, 15h, 10h, 1Ch, 19h, 23h, 24h
 
-S_DKONG:    DB 16, 14h, 1Fh, 1Eh, 1Bh, 15h, 29h, 10h, 14h, 1Fh, 1Eh, 17h, 10h, 30h, 25h, 23h, 31h
-S_DKONGJR:  DB 20, 14h, 1Fh, 1Eh, 1Bh, 15h, 29h, 10h, 14h, 1Fh, 1Eh, 17h, 10h, 1Ah, 22h, 42h, 10h, 30h, 25h, 23h, 31h
+S_DKONG:    DB 16, 14h, 1Fh, 1Eh, 1Bh, 15h, 29h, 10h, 1Bh, 1Fh, 1Eh, 17h, 10h, 30h, 25h, 23h, 31h
+S_DKONGJR:  DB 20, 14h, 1Fh, 1Eh, 1Bh, 15h, 29h, 10h, 1Bh, 1Fh, 1Eh, 17h, 10h, 1Ah, 22h, 42h, 10h, 30h, 25h, 23h, 31h
 S_RADARSCP: DB 16, 22h, 11h, 14h, 11h, 22h, 10h, 23h, 13h, 1Fh, 20h, 15h, 10h, 30h, 25h, 23h, 31h
 
 ; Menu Structs:

@@ -170,7 +170,7 @@ begin
 end
 
 // Pixel is clocked out on 1/2H falling
-assign tile_pixel = ((~(htiming_f + 0)) & 4'b1111) >> 1;
+assign tile_pixel = (((htiming + 1) >> 1) & 3'b111) ^ {3{~flip_ena}};
 
 always_comb
 begin
